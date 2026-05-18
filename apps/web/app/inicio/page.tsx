@@ -88,11 +88,11 @@ function KpiStrip({ items }: { items: KpiItem[] }) {
     <div className={`grid gap-3 ${items.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
       {items.map((item) => (
         <Link key={item.label} href={item.href}
-          className={`btn-tap rounded-2xl p-4 text-white ${bg[item.color]}`}
+          className={`btn-tap rounded-2xl p-3 sm:p-4 text-white ${bg[item.color]}`}
         >
           <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] opacity-70 leading-tight">{item.label}</p>
-          <p className="mt-1 text-5xl font-black leading-none">{item.value}</p>
-          <p className="mt-1.5 text-xs font-semibold opacity-75">{item.note}</p>
+          <p className="mt-1 text-4xl sm:text-5xl font-black leading-none">{item.value}</p>
+          <p className="mt-1 text-[11px] sm:text-xs font-semibold opacity-75 leading-tight">{item.note}</p>
         </Link>
       ))}
     </div>
@@ -104,15 +104,15 @@ function KpiStrip({ items }: { items: KpiItem[] }) {
 function PrimaryAction({ href, label, sub, icon }: { href: string; label: string; sub: string; icon: ActionTile["icon"] }) {
   return (
     <Link href={href}
-      className="btn-tap flex w-full items-center gap-4 rounded-2xl p-5 text-white"
+      className="btn-tap flex w-full items-center gap-3 rounded-2xl p-4 sm:p-5 text-white"
       style={{ background: "linear-gradient(135deg, #0b2a4a 0%, #1a3a5c 100%)", boxShadow: "0 8px 24px rgba(11,42,74,0.45)" }}
     >
-      <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15">
-        <Icon name={icon} className="h-7 w-7 text-white" />
+      <span className="inline-flex h-11 w-11 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+        <Icon name={icon} className="h-5 w-5 sm:h-7 sm:w-7 text-white" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-lg font-black leading-tight">{label}</p>
-        <p className="mt-0.5 text-sm font-semibold text-white/70">{sub}</p>
+        <p className="text-base sm:text-lg font-black leading-tight">{label}</p>
+        <p className="mt-0.5 text-xs sm:text-sm font-semibold text-white/70">{sub}</p>
       </div>
       <svg className="h-5 w-5 text-white/50 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -272,9 +272,9 @@ export default function InicioPage() {
         <PrimaryAction href="/tecnico/simple" label="Mi trabajo ahora" sub="Empezar, pausar o reanudar sin menús" icon="play" />
 
         {currentTechOrder && (
-          <div className="surface-content rounded-2xl p-4">
+          <div className="surface-content rounded-2xl p-3 sm:p-4">
             <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-700">Trabajo actual</p>
-            <p className="mt-1 text-3xl font-black tracking-tight text-slate-900">{currentTechOrder.plate}</p>
+            <p className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">{currentTechOrder.plate}</p>
             <p className="mt-1 text-sm font-semibold text-slate-600">{currentTechOrder.title}</p>
             <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-extrabold ${statusBadgeClass(currentTechOrder.stage)}`}>
               {statusLabel(currentTechOrder.stage)}
@@ -391,7 +391,7 @@ export default function InicioPage() {
 
       {/* ── HERO ── */}
       <div
-        className="relative overflow-hidden px-4 pb-8 pt-5 lg:pt-6"
+        className="relative overflow-hidden px-4 pb-5 pt-4 lg:pt-6"
         style={{
           backgroundImage:
             "linear-gradient(135deg, rgba(11,42,74,0.78) 0%, rgba(18,40,64,0.72) 55%, rgba(29,41,59,0.78) 100%), url('/banner-inicio.webp')",
@@ -412,7 +412,7 @@ export default function InicioPage() {
               <p className="text-sm font-extrabold text-amber-400 uppercase tracking-widest">
                 {greeting()}
               </p>
-              <h1 className="mt-1 text-3xl font-black text-white leading-tight">
+              <h1 className="mt-1 text-[2rem] sm:text-3xl font-black text-white leading-tight">
                 {activeUser?.name ?? "—"}
               </h1>
               <p className="mt-1 text-sm font-semibold text-white/50 capitalize">{todayLong()}</p>

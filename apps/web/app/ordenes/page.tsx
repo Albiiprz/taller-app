@@ -148,12 +148,12 @@ function WorkCard({ item }: { item: OtItem }) {
     : "bg-white border-slate-200";
 
   return (
-    <Link href={`/ordenes/${item.id}`} className={`btn-tap relative overflow-hidden rounded-3xl border-2 p-4 flex flex-col gap-3 ${bg}`}>
+    <Link href={`/ordenes/${item.id}`} className={`btn-tap relative overflow-hidden rounded-3xl border-2 p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3 ${bg}`}>
       <span className={`absolute left-0 top-0 h-full w-2 ${cardStripe(item)}`} />
       <div className="pl-3">
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
-          <p className="text-4xl font-black tracking-tight text-slate-900 leading-none">{item.plate}</p>
+          <p className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 leading-none">{item.plate}</p>
           {isUrgent && (
             <span className="shrink-0 rounded-full bg-rose-500 px-2.5 py-1 text-[10px] font-black text-white uppercase">
               URGENTE
@@ -318,7 +318,7 @@ export default function OrdenesPage() {
     <main className="min-h-screen app-bg mobile-nav-safe">
       {/* Hero */}
       <div
-        className="relative overflow-hidden px-4 pb-6 pt-5 lg:pt-6"
+        className="relative overflow-hidden px-4 pb-4 pt-4 lg:pt-6"
         style={{
           backgroundImage:
             "linear-gradient(135deg, rgba(11,42,74,0.78) 0%, rgba(18,40,64,0.72) 55%, rgba(29,41,59,0.78) 100%), url('/banner-trabajos.webp')",
@@ -340,7 +340,7 @@ export default function OrdenesPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-xs font-extrabold uppercase tracking-widest text-amber-400">Trabajos</p>
-              <h1 className="mt-0.5 text-2xl font-black text-white">{todayLong()}</h1>
+              <h1 className="mt-0.5 text-[1.9rem] sm:text-2xl font-black text-white">{todayLong()}</h1>
               {urgentRows.length > 0 && (
                 <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-rose-500 px-3 py-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
@@ -352,20 +352,21 @@ export default function OrdenesPage() {
             </div>
             <Link
               href={action.href}
-              className="btn-tap shrink-0 flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-extrabold text-white shadow-lg"
+              className="btn-tap shrink-0 flex items-center gap-2 rounded-2xl bg-amber-500 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-extrabold text-white shadow-lg"
             >
               <Icon name={action.icon} className="h-4 w-4" />
-              {action.label}
+              <span className="hidden sm:inline">{action.label}</span>
+              <span className="sm:hidden">Nueva</span>
             </Link>
           </div>
 
           {/* Search */}
-          <div className="mt-4 relative">
+          <div className="mt-3 relative">
             <svg className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/>
             </svg>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/10 pl-10 pr-4 py-3.5 text-sm font-semibold text-white placeholder:text-white/50 outline-none focus:border-amber-400/60 focus:bg-white/15 transition-colors"
+              className="w-full rounded-2xl border border-white/10 bg-white/10 pl-10 pr-4 py-3 text-sm font-semibold text-white placeholder:text-white/50 outline-none focus:border-amber-400/60 focus:bg-white/15 transition-colors"
               placeholder="Matrícula, número o trabajo…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -392,13 +393,13 @@ export default function OrdenesPage() {
             <button
               key={item.title}
               onClick={() => setSection(item.section)}
-              className={`btn-tap rounded-2xl p-4 text-left text-white transition-opacity ${kpiBg[item.color]} ${
+              className={`btn-tap rounded-2xl p-3 sm:p-4 text-left text-white transition-opacity ${kpiBg[item.color]} ${
                 section === item.section ? "ring-2 ring-white/40 ring-offset-2 ring-offset-transparent" : ""
               }`}
             >
               <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] opacity-70 leading-tight">{item.title}</p>
-              <p className="mt-1 text-5xl font-black leading-none">{item.value}</p>
-              <p className="mt-1.5 text-xs font-semibold opacity-75 leading-tight">{item.note}</p>
+              <p className="mt-1 text-4xl sm:text-5xl font-black leading-none">{item.value}</p>
+              <p className="mt-1 text-[11px] sm:text-xs font-semibold opacity-75 leading-tight">{item.note}</p>
             </button>
           ))}
         </section>
@@ -430,7 +431,7 @@ export default function OrdenesPage() {
                 <button
                   key={key}
                   onClick={() => setSection(key)}
-                  className={`btn-tap shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold transition-colors ${
+                  className={`btn-tap shrink-0 flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-extrabold transition-colors ${
                     isActive
                       ? "bg-slate-900 text-white"
                       : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"
