@@ -22,6 +22,7 @@ RUN apt-get update \
 
 COPY --from=deps /app/node_modules ./node_modules
 
+COPY package*.json ./
 COPY tsconfig*.json nest-cli.json ./
 COPY src ./src
 
