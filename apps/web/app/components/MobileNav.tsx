@@ -280,7 +280,7 @@ export default function MobileNav() {
       {fabConfig && (
         <Link
           href={fabConfig.href}
-          className="sm:hidden fixed bottom-20 right-4 z-50 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-extrabold text-white shadow-xl"
+          className="sm:hidden fixed bottom-[5.3rem] right-3 z-50 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3.5 py-2.5 text-sm font-extrabold text-white shadow-xl"
           aria-label={fabConfig.label}
         >
           <Icon name="new" className="h-4 w-4" />

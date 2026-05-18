@@ -77,22 +77,25 @@ function playScheduleReminderSound() {
 
 type KpiItem = { label: string; value: number; note: string; color: "amber" | "navy" | "green" | "rose"; href: string };
 
-function KpiStrip({ items }: { items: KpiItem[] }) {
+function KpiStrip({ items, density = "normal" }: { items: KpiItem[]; density?: "normal" | "tight" }) {
   const bg: Record<KpiItem["color"], string> = {
     amber: "bg-amber-500",
     navy:  "bg-[#0b2a4a]",
     green: "bg-emerald-600",
     rose:  "bg-rose-600",
   };
+  const cardPad = density === "tight" ? "p-2.5 sm:p-3" : "p-3 sm:p-4";
+  const numberSize = density === "tight" ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl";
+  const noteSize = density === "tight" ? "text-[10px] sm:text-[11px]" : "text-[11px] sm:text-xs";
   return (
     <div className={`grid gap-3 ${items.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
       {items.map((item) => (
         <Link key={item.label} href={item.href}
-          className={`btn-tap rounded-2xl p-3 sm:p-4 text-white ${bg[item.color]}`}
+          className={`btn-tap rounded-2xl ${cardPad} text-white ${bg[item.color]}`}
         >
           <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] opacity-70 leading-tight">{item.label}</p>
-          <p className="mt-1 text-4xl sm:text-5xl font-black leading-none">{item.value}</p>
-          <p className="mt-1 text-[11px] sm:text-xs font-semibold opacity-75 leading-tight">{item.note}</p>
+          <p className={`mt-1 font-black leading-none ${numberSize}`}>{item.value}</p>
+          <p className={`mt-1 font-semibold opacity-75 leading-tight ${noteSize}`}>{item.note}</p>
         </Link>
       ))}
     </div>
@@ -263,7 +266,7 @@ export default function InicioPage() {
   function renderByRole() {
     if (activeRole === "Técnico") return (
       <div className="space-y-4">
-        <KpiStrip items={[
+        <KpiStrip density="normal" items={[
           { label: "Mi trabajo",  value: currentTechOrder ? 1 : 0, note: "En marcha ahora",    color: "navy",  href: "/tecnico/simple" },
           { label: "Hoy",        value: techRows.length,           note: "Trabajos del día",   color: "amber", href: "/ordenes" },
           { label: "Terminados", value: techRows.filter(r => r.stage === "LISTO_ENTREGA" || r.stage === "ENTREGADO").length, note: "Para entregar", color: "green", href: "/ordenes" },
@@ -289,7 +292,7 @@ export default function InicioPage() {
 
     if (activeRole === "Oficina") return (
       <div className="space-y-4">
-        <KpiStrip items={[
+        <KpiStrip density="tight" items={[
           { label: "Llegadas",  value: todayArrivals.length, note: "Hoy",              color: "amber", href: "/ordenes" },
           { label: "Llamar",   value: callPendings.length,  note: "Pendientes",        color: "rose",  href: "/ordenes" },
           { label: "Listos",   value: readyVehicles.length, note: "Para avisar",       color: "green", href: "/ordenes" },
@@ -310,7 +313,7 @@ export default function InicioPage() {
 
     if (activeRole === "Administración") return (
       <div className="space-y-4">
-        <KpiStrip items={[
+        <KpiStrip density="tight" items={[
           { label: "Bloqueados", value: diagnosticQueue.length, note: "Sin diagnóstico", color: "amber", href: "/taller" },
           { label: "Listos",     value: readyVehicles.length,   note: "Avisar cliente",  color: "green", href: "/ordenes" },
           { label: "Llamar",     value: callPendings.length,    note: "Presupuestos",    color: "navy",  href: "/ordenes" },
@@ -333,7 +336,7 @@ export default function InicioPage() {
 
     if (activeRole === "Jefe de Taller") return (
       <div className="space-y-4">
-        <KpiStrip items={[
+        <KpiStrip density="tight" items={[
           { label: "Activos",   value: roleRows.length,    note: "En el taller",    color: "navy",  href: "/taller" },
           { label: "Urgentes",  value: urgentRows.length,  note: "Prioritarios",   color: "rose",  href: "/ordenes" },
           { label: "Listos",    value: readyVehicles.length, note: "Para entregar", color: "green", href: "/ordenes" },
@@ -353,7 +356,7 @@ export default function InicioPage() {
 
     if (activeRole === "Inventario") return (
       <div className="space-y-4">
-        <KpiStrip items={[
+        <KpiStrip density="normal" items={[
           { label: "Consumos",  value: roleRows.length, note: "Trabajos hoy", color: "navy",  href: "/inventario" },
           { label: "Stock bajo", value: pendingOrders.filter(ot => ot.stage === "APROBADO").length, note: "Revisar", color: "rose", href: "/inventario" },
         ]} />
@@ -371,7 +374,7 @@ export default function InicioPage() {
 
     if (activeRole === "Contabilidad") return (
       <div className="space-y-4">
-        <KpiStrip items={[
+        <KpiStrip density="normal" items={[
           { label: "Para cobrar", value: readyVehicles.length, note: "Entregados",    color: "amber", href: "/ordenes" },
           { label: "Abiertos",   value: roleRows.length,       note: "Activos hoy",  color: "navy",  href: "/ordenes" },
         ]} />
