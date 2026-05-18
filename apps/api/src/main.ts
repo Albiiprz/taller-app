@@ -3,6 +3,10 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const extraAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -15,8 +19,10 @@ async function bootstrap() {
       const isTryCloudflare = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/i.test(
         origin,
       );
+      const isExplicitlyAllowed = extraAllowedOrigins.includes(origin);
 
-      if (isLocalhost || isTryCloudflare) return callback(null, true);
+      if (isLocalhost || isTryCloudflare || isExplicitlyAllowed)
+        return callback(null, true);
       return callback(new Error(`Origin no permitido: ${origin}`), false);
     },
     credentials: true,

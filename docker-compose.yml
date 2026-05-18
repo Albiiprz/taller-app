@@ -44,6 +44,7 @@ services:
       WHATSAPP_PROVIDER_TIMEOUT_MS: ${WHATSAPP_PROVIDER_TIMEOUT_MS:-15000}
       NOTIFICATION_WORKER_ENABLED: ${NOTIFICATION_WORKER_ENABLED:-true}
       NOTIFICATION_WORKER_INTERVAL_MS: ${NOTIFICATION_WORKER_INTERVAL_MS:-60000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://taller-app.duckdns.org}
     volumes:
       # El JSON de la service account se monta desde el host (no va al repo).
       # Si todavía no lo tienes, crea un fichero vacío en ./apps/api/keys/ para que el mount no falle.
