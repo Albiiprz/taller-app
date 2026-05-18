@@ -17,6 +17,8 @@ COPY . .
 # Args públicos (se inyectan en el bundle de cliente)
 ARG NEXT_PUBLIC_API_URL=/api
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG API_INTERNAL_URL=http://api:3001
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
 
 RUN npm run build
 

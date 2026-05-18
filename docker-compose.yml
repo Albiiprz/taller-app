@@ -62,6 +62,8 @@ services:
       args:
         # Inyectado en el bundle de cliente. /api es la ruta interna que Next.js reescribe a la API.
         NEXT_PUBLIC_API_URL: /api
+        # Este valor lo lee next.config.ts en build-time para crear el rewrite /api -> api
+        API_INTERNAL_URL: http://api:3001
     container_name: taller_web
     environment:
       NODE_ENV: production
