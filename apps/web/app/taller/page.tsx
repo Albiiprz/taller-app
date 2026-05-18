@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import MobileNav from "../components/MobileNav";
@@ -307,7 +307,7 @@ function BoardSection({
   );
 }
 
-export default function TallerPage() {
+function TallerPageContent() {
   const { hasRole, activeUser } = useSession();
   const searchParams = useSearchParams();
   const currentRole = (activeUser?.roles?.[0] ?? "Administración") as Role;
@@ -795,5 +795,13 @@ export default function TallerPage() {
 
       <MobileNav />
     </main>
+  );
+}
+
+export default function TallerPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen app-bg p-6 text-sm font-semibold text-slate-500">Cargando taller...</main>}>
+      <TallerPageContent />
+    </Suspense>
   );
 }

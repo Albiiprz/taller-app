@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import MobileNav from "../components/MobileNav";
 import { useSession } from "../components/useSession";
@@ -150,7 +150,7 @@ function emptyForm(): ProductForm {
   };
 }
 
-export default function InventarioPage() {
+function InventarioPageContent() {
   const { hasRole } = useSession();
   const searchParams = useSearchParams();
   const canManage = hasRole("Inventario") || hasRole("Administración");
@@ -1030,5 +1030,13 @@ export default function InventarioPage() {
 
       <MobileNav />
     </main>
+  );
+}
+
+export default function InventarioPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen app-bg p-6 text-sm font-semibold text-slate-500">Cargando inventario...</main>}>
+      <InventarioPageContent />
+    </Suspense>
   );
 }
