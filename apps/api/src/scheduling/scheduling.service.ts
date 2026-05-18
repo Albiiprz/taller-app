@@ -1104,15 +1104,18 @@ export class SchedulingService {
     );
 
     // Ensure users exist (create missing ones with PIN 0000 so they can log in).
-    const users = await this.db.query<{ id: number; name: string; login_name: string | null }>(
+    type ActiveUserRow = { id: number; name: string; login_name: string | null };
+    const users = await this.db.query<ActiveUserRow>(
       `SELECT id, name, login_name FROM users WHERE is_active = TRUE`,
     );
-    const byLogin = new Map(
+    const byLogin = new Map<string, ActiveUserRow>(
       users.rows
         .filter((u) => typeof u.login_name === 'string' && u.login_name)
-        .map((u) => [String(u.login_name).toLowerCase(), u]),
+        .map((u): [string, ActiveUserRow] => [String(u.login_name).toLowerCase(), u]),
     );
-    const byName = new Map(users.rows.map((u) => [u.name.toLowerCase(), u]));
+    const byName = new Map<string, ActiveUserRow>(
+      users.rows.map((u): [string, ActiveUserRow] => [u.name.toLowerCase(), u]),
+    );
 
     const ensureUser = async (name: string, login: string, role: string, roles: string[]) => {
       const key = login.toLowerCase();
