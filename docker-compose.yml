@@ -3,13 +3,86 @@ services:
     image: postgres:16
     container_name: taller_db
     environment:
-      POSTGRES_USER: taller
-      POSTGRES_PASSWORD: taller
-      POSTGRES_DB: taller
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${DB_USER:-taller}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_NAME:-taller}
     volumes:
       - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-taller} -d ${DB_NAME:-taller}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - internal
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: taller_api
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-taller}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_NAME: ${DB_NAME:-taller}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+      GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-}
+      GOOGLE_SERVICE_ACCOUNT_KEY_PATH: /app/keys/google-service-account.json
+      GOOGLE_CALENDAR_TIMEZONE: ${GOOGLE_CALENDAR_TIMEZONE:-Europe/Madrid}
+      WHATSAPP_PROVIDER_URL: ${WHATSAPP_PROVIDER_URL:-}
+      WHATSAPP_PROVIDER_TOKEN: ${WHATSAPP_PROVIDER_TOKEN:-}
+      WHATSAPP_PROVIDER_TIMEOUT_MS: ${WHATSAPP_PROVIDER_TIMEOUT_MS:-15000}
+      NOTIFICATION_WORKER_ENABLED: ${NOTIFICATION_WORKER_ENABLED:-true}
+      NOTIFICATION_WORKER_INTERVAL_MS: ${NOTIFICATION_WORKER_INTERVAL_MS:-60000}
+    volumes:
+      # El JSON de la service account se monta desde el host (no va al repo).
+      # Si todavía no lo tienes, crea un fichero vacío en ./apps/api/keys/ para que el mount no falle.
+      - ./apps/api/keys:/app/keys:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        # Inyectado en el bundle de cliente. /api es la ruta interna que Next.js reescribe a la API.
+        NEXT_PUBLIC_API_URL: /api
+    container_name: taller_web
+    environment:
+      NODE_ENV: production
+      # Next.js usa rewrites() para reenviar /api/* al backend dentro de la red Docker.
+      API_INTERNAL_URL: http://api:3001
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - internal
+      # web es el único servicio público — se une a la red compartida con Caddy.
+      - web
 
 volumes:
   dbdata:
+
+networks:
+  internal:
+    # Red privada para db/api/web. Sin acceso externo.
+    driver: bridge
+  web:
+    # Red compartida con el Caddy de eportepro. Definida externamente.
+    # Se crea con: docker network create web
+    external: true

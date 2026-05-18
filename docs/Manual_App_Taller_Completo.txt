@@ -1,0 +1,525 @@
+MANUAL COMPLETO DE LA APP DEL TALLER (EXPLICADO FÁCIL)
+Versión: 2026-03-02
+Proyecto: taller-app
+
+=====================================================================
+1) QUÉ ES ESTA APP
+=====================================================================
+Esta app sirve para gestionar el taller entero en una sola plataforma:
+- Citas
+- Órdenes de trabajo (OT)
+- Operativa del taller
+- Inventario y stock
+- Calendario de técnicos
+- Usuarios y permisos
+- Avisos y prioridades
+
+Idea principal:
+Si Oficina crea una cita, la app puede crear automáticamente la OT programada,
+y el equipo trabaja sobre esa OT (estado, notas, tiempo, material, etc.).
+
+
+=====================================================================
+2) CÓMO ENTRAR (LOGIN)
+=====================================================================
+Pantalla: /login
+
+Pasos:
+1. Elige usuario.
+2. Escribe PIN.
+3. Pulsa Entrar.
+
+Usuarios base (si no los habéis cambiado):
+- admin / 1234
+- oficina / 1234
+- tecnico / 1234
+- jefe / 1234
+- conta / 1234
+- inventario / 1234
+
+Si sale “No se pudo conectar con la API”:
+- El frontend está encendido, pero el backend no.
+- Revisa sección 13 (Problemas comunes).
+
+
+=====================================================================
+3) ROLES Y QUÉ PUEDE HACER CADA UNO
+=====================================================================
+1. Administración
+- Ve todo.
+- Configura usuarios, roles, horarios técnicos y bloqueos.
+- Puede cancelar citas y tocar calendario.
+- Control total.
+
+2. Oficina
+- Crea citas.
+- Puede cancelar citas.
+- Ve calendario resumen.
+- Normalmente gestiona entradas/salidas con cliente.
+
+3. Jefe de Taller
+- Ve el calendario (lectura).
+- Supervisa tablero de trabajo.
+- Reparte carga operativa.
+
+4. Técnico
+- Ejecuta trabajo en OTs.
+- Cambia estados permitidos.
+- Registra tiempo, checklist, notas y material.
+
+5. Inventario
+- Crea/edita productos.
+- Ajusta stock.
+- Escanea códigos.
+- Imprime etiquetas.
+
+6. Contabilidad
+- Consulta parte económica y estados finales (según permisos activos).
+
+
+=====================================================================
+4) ESTRUCTURA DE LA APP (MENÚ)
+=====================================================================
+Pantallas principales:
+- Inicio: /inicio
+- Órdenes: /ordenes
+- Nueva orden: /ordenes/nueva
+- Detalle OT: /ordenes/:id
+- Taller (tablero): /taller
+- Citas nueva: /citas/nueva
+- Citas asistente (voz): /citas/asistente
+- Editar cita: /citas/:id
+- Calendario: /calendario
+- Inventario: /inventario
+- Avisos: /avisos
+- Perfil: /perfil
+- Perfiles/usuarios: /ajustes/usuarios
+
+En móvil:
+- Barra inferior fija con accesos rápidos.
+
+Consejo práctico:
+- Inicio para ver prioridades.
+- Citas para planificar.
+- Taller para ejecutar.
+- Inventario para material.
+
+
+=====================================================================
+5) INICIO (DASHBOARD)
+=====================================================================
+Pantalla: /inicio
+
+Qué ves:
+- Resumen por rol (tarjetas).
+- Acciones rápidas.
+- “Mis pendientes” (OTs abiertas con prioridad).
+
+Objetivo:
+Saber en 10 segundos qué hacer primero.
+
+Uso recomendado:
+1. Entra en Inicio.
+2. Mira “Mis pendientes”.
+3. Abre la OT más urgente.
+4. Empieza trabajo desde ahí.
+
+
+=====================================================================
+6) CITAS (MÓDULO OFICINA/ADMIN)
+=====================================================================
+
+6.1 Nueva cita (manual)
+Pantalla: /citas/nueva
+
+Qué haces aquí:
+- Datos cliente (nombre, teléfono, email, empresa).
+- Datos vehículo (matrícula, VIN, modelo).
+- Tipo de trabajo y duración.
+- Elegir técnico.
+- Elegir fecha y hora disponible.
+
+Semáforo de disponibilidad:
+- Verde = bien
+- Amarillo = limitado
+- Rojo = sin hueco
+
+Bloques horarios:
+- Mañana y tarde separados.
+- Solo se puede seleccionar horas libres.
+
+Al guardar:
+- Se crea la cita.
+- Se crea OT programada asociada.
+- Se prepara WhatsApp de confirmación.
+- Si está configurado proveedor, se intenta envío automático.
+
+
+6.2 Guardar borrador
+En la misma pantalla existe “Guardar borrador rápido”.
+
+Sirve para:
+- Guardar una cita incompleta cuando vas con prisa.
+- Completarla después en /citas/:id.
+
+
+6.3 Asistente de cita (voz)
+Pantalla: /citas/asistente
+
+Modo guiado por pasos:
+1. Cliente + teléfono + matrícula + motivo.
+2. Técnico.
+3. Día.
+4. Hora.
+5. Resumen y confirmar.
+
+Ideal para llamadas rápidas.
+
+Si falla micro:
+- Revisar permisos del navegador.
+- Probar Chrome actualizado.
+- En Safari puede variar según versión y permisos del sistema.
+
+
+6.4 Editar o completar cita
+Pantalla: /citas/:id
+
+Permite:
+- Cambiar cliente/teléfono/trabajo.
+- Cambiar técnico y fecha/hora.
+- Completar datos de borrador.
+
+
+6.5 Cancelar cita
+Desde Calendario (según rol permitido) puedes cancelar cita.
+
+
+=====================================================================
+7) CALENDARIO DE TÉCNICOS
+=====================================================================
+Pantalla: /calendario
+
+Para qué sirve:
+- Ver agenda global por técnico.
+- Ver bloques de cita, vacaciones e internos.
+
+Permisos:
+- Administración: edición completa (bloqueos, reglas, etc.).
+- Oficina: lectura + cancelar cita.
+- Jefe Taller: lectura.
+
+Funciones clave:
+1. Rango de fechas
+- Seleccionas desde/hasta.
+- Ves carga real por técnico.
+
+2. Crear bloqueos (Admin)
+- Tipo VACATION o INTERNAL.
+- Evita que esas horas aparezcan disponibles.
+
+3. Horario semanal técnico (Admin)
+- Definir tramos por día (ej. 08:00-14:00).
+- Es la base del cálculo de disponibilidad.
+
+Regla importante:
+Sin horario semanal, ese técnico puede salir sin huecos.
+
+
+=====================================================================
+8) ÓRDENES DE TRABAJO (OT)
+=====================================================================
+
+8.1 Lista de órdenes
+Pantalla: /ordenes
+
+Qué incluye:
+- Todas las OTs reales.
+- Estado y prioridad.
+- Búsqueda por OT/matrícula.
+
+
+8.2 Nueva orden manual
+Pantalla: /ordenes/nueva
+
+Uso recomendado:
+- Solo cuando NO hay cita previa.
+
+Si hay cita previa:
+- Lo normal es que Oficina cree cita y la OT nazca automáticamente.
+
+
+8.3 Tablero de taller
+Pantalla: /taller
+
+Columnas típicas:
+- Programadas
+- Recepción
+- Diagnóstico
+- En reparación
+- Control calidad
+- Listo entrega
+
+Para qué sirve:
+- Ver la cola de trabajo visual.
+- Mover OTs por estado (según permisos de rol y flujo).
+
+
+8.4 Detalle de OT
+Pantalla: /ordenes/:id
+
+Bloques principales:
+1. Estado y datos
+- Matrícula, prioridad, título.
+
+2. Cambio de estado
+- Solo estados permitidos por flujo y rol.
+
+3. Fotos/evidencias
+- Subida desde móvil o PC.
+
+4. Tiempo
+- Botón Empezar/Parar.
+- Registro de tiempo acumulado.
+
+5. Checklist recepción
+- KM, combustible, daños, llaves, docs, tarjeta tacógrafo, etc.
+
+6. Material
+- Consumir producto desde la OT.
+- Baja stock y deja rastro.
+- Escaneo por cámara o código manual.
+
+7. Historial / auditoría
+- Qué se hizo y cuándo.
+
+8. Notas
+- Notas rápidas de ejecución.
+
+
+=====================================================================
+9) INVENTARIO
+=====================================================================
+Pantalla: /inventario
+
+Qué puedes hacer:
+1. Crear producto
+- SKU/ID, nombre, descripción, stock inicial, mínimo, unidad, ubicación, código.
+
+2. Editar producto
+- Cambiar nombre, descripción, mínimo, unidad, ubicación, código.
+
+3. Ajustar stock
+- Delta (+/-) y motivo.
+
+4. Buscar por escaneo
+- Cámara del móvil/PC compatible.
+- Muestra ficha del producto.
+
+5. Etiquetas
+- Imprimir todas en PDF.
+- Imprimir etiqueta individual.
+- Etiqueta con ID, nombre, descripción y código.
+
+6. Historial de movimientos
+- Entradas/salidas/ajustes con fecha y motivo.
+
+Semáforo de stock:
+- Stock bajo aparece destacado para reposición.
+
+
+=====================================================================
+10) AVISOS
+=====================================================================
+Pantalla: /avisos
+
+Qué muestra:
+- Alertas de trabajo e inventario.
+- Color estándar en toda la app:
+  - Rojo = crítico
+  - Ámbar = atención
+  - Azul = informativo
+  - Verde = controlado
+
+Sirve para:
+- Decidir prioridades sin buscar pantalla por pantalla.
+
+
+=====================================================================
+11) PERFIL Y USUARIOS
+=====================================================================
+
+11.1 Mi perfil
+Pantalla: /perfil
+
+Permite:
+- Editar tus datos personales.
+- Subir foto de perfil.
+- Cerrar sesión.
+
+Si eres Administración:
+- También puedes tocar roles/PIN de tu propio perfil.
+
+
+11.2 Gestión de usuarios (Admin)
+Pantalla: /ajustes/usuarios
+
+Permite:
+- Crear usuarios reales.
+- Activar/desactivar.
+- Editar login, PIN, roles, contacto.
+- Subir foto.
+- Borrar usuario.
+
+Recomendación:
+- Un login por persona, sin compartir usuarios.
+
+
+=====================================================================
+12) FLUJO RECOMENDADO DE TRABAJO (MUY SIMPLE)
+=====================================================================
+Flujo ideal diario:
+1. Oficina recibe llamada.
+2. Oficina crea cita.
+3. Sistema crea OT programada.
+4. Técnico abre su OT del día.
+5. Técnico ejecuta (tiempo, checklist, notas, material).
+6. Cambios de estado hasta listo/entregado.
+7. Cierre y facturación según proceso.
+
+Resumen en una línea:
+Cita -> OT -> Trabajo -> Entrega -> Cierre.
+
+
+=====================================================================
+13) PROBLEMAS COMUNES Y SOLUCIÓN RÁPIDA
+=====================================================================
+
+Problema A: “No se pudo conectar con la API”
+Causa:
+- Backend apagado.
+
+Solución:
+1. Arranca base de datos.
+2. Arranca API.
+3. Comprueba salud:
+   curl http://127.0.0.1:3001/health
+
+
+Problema B: Login sin usuarios
+Causa:
+- API caída o DB sin datos iniciales.
+
+Solución:
+- Levantar backend y revisar logs.
+- Verificar endpoint:
+  GET /users/login-options
+
+
+Problema C: Técnico sin huecos
+Causa habitual:
+- No tiene horario semanal configurado.
+- Tiene bloqueos/vacaciones.
+
+Solución:
+- Ir a Calendario.
+- Configurar reglas horarias del técnico.
+
+
+Problema D: Escáner no funciona
+Causa:
+- Navegador sin soporte o sin permiso cámara.
+
+Solución:
+- Dar permiso cámara.
+- Probar navegador actualizado (Chrome móvil recomendado).
+
+
+Problema E: No manda WhatsApp automático
+Causa:
+- Falta proveedor configurado.
+
+Solución:
+- Dejar al menos URL de WhatsApp prellenada.
+- Configurar proveedor en backend si queréis envío real.
+
+
+=====================================================================
+14) COMANDOS BÁSICOS PARA LEVANTAR LA APP
+=====================================================================
+Desde la raíz del proyecto:
+
+1. Base de datos (Docker)
+   cd /Users/albaperezsanchez/taller-app
+   docker compose up -d db
+
+2. Backend API
+   cd /Users/albaperezsanchez/taller-app/apps/api
+   npm install
+   npm run start:dev
+
+3. Frontend WEB
+   cd /Users/albaperezsanchez/taller-app/apps/web
+   npm install
+   npm run dev
+
+4. Probar salud API
+   curl http://127.0.0.1:3001/health
+
+
+=====================================================================
+15) MINIGUÍA POR ROL (VERSIÓN ULTRARRÁPIDA)
+=====================================================================
+
+Administración:
+- Revisa Inicio.
+- Configura usuarios y calendario técnico.
+- Controla bloqueos y problemas.
+
+Oficina:
+- Crea cita.
+- Confirma hueco con técnico.
+- Completa datos y guarda.
+- Si hay cambios, edita/cancela cita.
+
+Jefe Taller:
+- Mira tablero.
+- Reparte carga.
+- Vigila cuellos de botella.
+
+Técnico:
+- Abre OT asignada.
+- Start/Stop tiempo.
+- Checklist + notas + material.
+- Avanza estado.
+
+Inventario:
+- Alta productos.
+- Ajustes de stock.
+- Escaneo y etiquetas.
+
+Contabilidad:
+- Revisión de estados finales y pendientes de cobro/facturación.
+
+
+=====================================================================
+16) GLOSARIO CORTO (SIN TECNICISMOS)
+=====================================================================
+- OT: Orden de Trabajo.
+- Programada: trabajo planificado en agenda.
+- Checklist: lista de comprobación.
+- Stock mínimo: cantidad mínima segura.
+- Bloqueo: tramo de tiempo no reservable.
+- QR/Código barras: identificador rápido de producto.
+
+
+=====================================================================
+17) RESUMEN FINAL “PARA TONTOS”
+=====================================================================
+Si solo te quedas con 5 ideas:
+1. Entra y mira Inicio.
+2. Si hay llamada: crea cita.
+3. La cita genera OT y se trabaja desde ahí.
+4. Técnico siempre deja rastro: tiempo, checklist, notas y material.
+5. Si algo falla: revisa API/DB y permisos.
+
+Fin del manual.

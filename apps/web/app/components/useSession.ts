@@ -14,6 +14,7 @@ export type User = {
   id: string;
   name: string;
   roles: Role[];           // ✅ multi-rol
+  login?: string;
   pin?: string;
 
   avatarDataUrl?: string;  // ✅ foto comprimida (data URL)
@@ -35,6 +36,7 @@ const DEFAULT_USERS: User[] = [
     id: "u_admin",
     name: "Admin",
     roles: ["Administración"],
+    login: "admin",
     pin: "",
     avatarDataUrl: "",
     phone: "",
@@ -49,6 +51,7 @@ const DEFAULT_USERS: User[] = [
     id: "u_oficina",
     name: "Oficina",
     roles: ["Oficina"],
+    login: "oficina",
     pin: "1234",
     avatarDataUrl: "",
     phone: "",
@@ -63,6 +66,7 @@ const DEFAULT_USERS: User[] = [
     id: "u_tecnico",
     name: "Técnico",
     roles: ["Técnico"],
+    login: "tecnico",
     pin: "1234",
     avatarDataUrl: "",
     phone: "",
@@ -84,11 +88,11 @@ function safeParse<T>(raw: string | null, fallback: T): T {
   }
 }
 
-function isValidRole(r: any): r is Role {
+function isValidRole(r: unknown): r is Role {
   return ["Administración","Oficina","Jefe de Taller","Técnico","Contabilidad","Inventario"].includes(String(r));
 }
 
-function normalizeRoles(input: any): Role[] {
+function normalizeRoles(input: unknown): Role[] {
   if (Array.isArray(input)) {
     const roles = input.filter(isValidRole) as Role[];
     return roles.length ? roles : ["Técnico"];
@@ -97,43 +101,65 @@ function normalizeRoles(input: any): Role[] {
   return ["Técnico"];
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function normalizeStoredUser(item: Record<string, unknown>): User {
+  const id = typeof item["id"] === "string" ? item["id"] : String(item["id"] ?? "");
+  const safeId = id || ("u_" + Math.random().toString(16).slice(2));
+  const name = typeof item["name"] === "string" ? item["name"] : "Usuario";
+  const roles = normalizeRoles(item["roles"] ?? item["role"]);
+  const login = typeof item["login"] === "string" ? item["login"] : "";
+  const pin = typeof item["pin"] === "string" ? item["pin"] : "";
+
+  return {
+    id: safeId,
+    name,
+    roles,
+    login,
+    pin,
+    avatarDataUrl: typeof item["avatarDataUrl"] === "string" ? item["avatarDataUrl"] : "",
+    phone: typeof item["phone"] === "string" ? item["phone"] : "",
+    email: typeof item["email"] === "string" ? item["email"] : "",
+    birthDate: typeof item["birthDate"] === "string" ? item["birthDate"] : "",
+    extra: typeof item["extra"] === "string" ? item["extra"] : "",
+    isActive: typeof item["isActive"] === "boolean" ? item["isActive"] : true,
+    createdAt: typeof item["createdAt"] === "string" ? item["createdAt"] : new Date().toISOString(),
+    lastLoginAt: typeof item["lastLoginAt"] === "string" ? item["lastLoginAt"] : "",
+  };
+}
+
 function migrateFromV2OrV1(): User[] | null {
   // v2
-  const v2 = safeParse<any[]>(localStorage.getItem("taller_users_v2"), []);
-  if (Array.isArray(v2) && v2.length > 0) {
-    return v2.map((u: any) => ({
-      id: String(u.id ?? ("u_" + Math.random().toString(16).slice(2))),
-      name: String(u.name ?? "Usuario"),
-      roles: normalizeRoles(u.role ?? u.roles),
-      pin: String(u.pin ?? ""),
+  const v2raw = safeParse<unknown[]>(localStorage.getItem("taller_users_v2"), []);
+  const v2 = (Array.isArray(v2raw) ? v2raw : []).filter(isRecord);
+  if (v2.length > 0) {
+    return v2.map((u) => ({
+      ...normalizeStoredUser({
+        ...u,
+        extra: typeof u["notes"] === "string" ? u["notes"] : "",
+      }),
+      // v2 no guardaba avatar/birthDate
       avatarDataUrl: "",
-      phone: String(u.phone ?? ""),
-      email: String(u.email ?? ""),
       birthDate: "",
-      extra: String(u.notes ?? ""),
-      isActive: Boolean(u.isActive ?? true),
-      createdAt: String(u.createdAt ?? new Date().toISOString()),
-      lastLoginAt: String(u.lastLoginAt ?? u.lastLoginAt ?? ""),
-    })) as User[];
+    }));
   }
 
   // v1 (muy antiguo)
-  const v1 = safeParse<any[]>(localStorage.getItem("taller_users_v1"), []);
-  if (Array.isArray(v1) && v1.length > 0) {
-    return v1.map((u: any) => ({
-      id: String(u.id ?? ("u_" + Math.random().toString(16).slice(2))),
-      name: String(u.name ?? "Usuario"),
-      roles: normalizeRoles(u.role ?? u.roles),
-      pin: String(u.pin ?? ""),
+  const v1raw = safeParse<unknown[]>(localStorage.getItem("taller_users_v1"), []);
+  const v1 = (Array.isArray(v1raw) ? v1raw : []).filter(isRecord);
+  if (v1.length > 0) {
+    return v1.map((u) => ({
+      ...normalizeStoredUser(u),
       avatarDataUrl: "",
       phone: "",
       email: "",
       birthDate: "",
       extra: "",
       isActive: true,
-      createdAt: String(u.createdAt ?? new Date().toISOString()),
       lastLoginAt: "",
-    })) as User[];
+    }));
   }
 
   return null;
@@ -170,9 +196,12 @@ export function useSession() {
 
   function load() {
     initUsersIfNeeded();
-    const u = safeParse<User[]>(localStorage.getItem(STORAGE_USERS), []);
+    const uRaw = safeParse<unknown[]>(localStorage.getItem(STORAGE_USERS), []);
     const a = localStorage.getItem(STORAGE_ACTIVE_USER) || "";
-    setUsers(Array.isArray(u) ? u : []);
+    const normalized = (Array.isArray(uRaw) ? uRaw : [])
+      .filter(isRecord)
+      .map((item) => normalizeStoredUser(item));
+    setUsers(normalized);
     setActiveUserId(a);
   }
 

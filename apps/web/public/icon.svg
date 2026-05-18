@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f4f8a"/>
+      <stop offset="100%" stop-color="#0c2540"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Wrench/llave inglesa estilizada -->
+  <g fill="#f7c948" transform="translate(256 256) rotate(-30) translate(-160 -40)">
+    <path d="M40 60
+             a40 40 0 1 1 32 -72
+             l-18 18
+             a20 20 0 1 0 28 28
+             l18 -18
+             a40 40 0 0 1 -32 72
+             a40 40 0 0 1 -8 -1
+             l-180 0
+             a30 30 0 0 1 0 -60
+             l160 0
+             z"/>
+  </g>
+  <text x="256" y="430" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="900" font-size="64" fill="#f7c948">MALU</text>
+</svg>

@@ -24,10 +24,9 @@ export function setStoredRole(role: Role) {
 }
 
 export function useRole() {
-  const [role, setRole] = useState<Role>("Administración");
+  const [role, setRole] = useState<Role>(() => getStoredRole());
 
   useEffect(() => {
-    setRole(getStoredRole());
     const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_ROLE) setRole(getStoredRole());
     };

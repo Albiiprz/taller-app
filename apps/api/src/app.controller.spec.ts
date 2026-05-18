@@ -14,9 +14,12 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  describe('health', () => {
+    it('should return service health payload', () => {
+      const res = appController.health();
+      expect(res.ok).toBe(true);
+      expect(res.service).toBe('taller-api');
+      expect(typeof res.at).toBe('string');
     });
   });
 });

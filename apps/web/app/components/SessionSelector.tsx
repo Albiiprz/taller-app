@@ -17,7 +17,7 @@ export default function SessionSelector() {
       >
         {users.map((u) => (
           <option key={u.id} value={u.id}>
-            {u.name} — {u.role}
+            {u.name} — {(u.roles ?? []).join(", ")}
           </option>
         ))}
       </select>

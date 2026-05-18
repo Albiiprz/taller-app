@@ -4,81 +4,68 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MobileNav from "../../components/MobileNav";
-
-type Stage = "DIAGNOSTICO" | "REPARACION" | "QC" | "LISTO";
-type Item = {
-  id: string;
-  plate: string;
-  title: string;
-  prio: "Normal" | "Alta" | "Urgente";
-  stage: Stage;
-};
-
-const STORAGE_KEY = "taller_items_v1";
-
-function safeParseItems(raw: string | null): Item[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as Item[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function nextNumericId(items: Item[]) {
-  let maxId = 1000;
-  items.forEach((it) => {
-    const n = parseInt(it.id, 10);
-    if (!isNaN(n) && n > maxId) maxId = n;
-  });
-  return String(maxId + 1);
-}
+import { createWorkOrder } from "../../core/ordersApi";
+import type { OtItem, OtPriority } from "../../core/workflow";
+import { useSession } from "../../components/useSession";
+import { Icon } from "../../components/ui/Icon";
 
 export default function NuevaOTPage() {
   const router = useRouter();
+  const { activeUser } = useSession();
   const [matricula, setMatricula] = useState("");
   const [titulo, setTitulo] = useState("");
-  const [prio, setPrio] = useState<"Normal" | "Alta" | "Urgente">("Normal");
+  const [cliente, setCliente] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [tiempo, setTiempo] = useState("");
+  const [prio, setPrio] = useState<OtPriority>("Normal");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const canCreate = matricula.trim().length > 0 && titulo.trim().length > 0;
 
-  function crearOT() {
-    const items = safeParseItems(localStorage.getItem(STORAGE_KEY));
-    const id = nextNumericId(items);
+  async function crearOT() {
+    if (isSaving) return;
+    setError("");
+    setIsSaving(true);
 
-    const newItem: Item = {
-      id,
-      plate: matricula.trim().toUpperCase(),
-      title: titulo.trim(),
-      prio,
-      stage: "DIAGNOSTICO",
-    };
-
-    const updated = [newItem, ...items];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    router.push(`/taller?new=${id}`);
+    try {
+      const created: OtItem = await createWorkOrder({
+        plate: matricula.trim().toUpperCase(),
+        title: titulo.trim(),
+        priority: prio,
+        actorRole: (activeUser?.roles?.[0] ?? "Oficina"),
+        actorName: activeUser?.name ?? "Usuario",
+      });
+      router.push(`/taller?new=${created.id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo crear la OT");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 pt-6 pb-24">
-      <header className="mb-6">
+    <main className="min-h-screen app-bg module-office px-4 pt-4 mobile-nav-safe">
+      <header className="module-hero module-office mx-auto mb-4 w-full max-w-3xl p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-800">Nueva orden</h1>
-          <Link className="text-sm font-medium text-blue-600" href="/ordenes">
+          <h1 className="module-title inline-flex items-center gap-2">
+            <Icon name="new" className="h-6 w-6" />
+            Nueva orden
+          </h1>
+          <Link className="module-map-chip" href="/ordenes">
             Cancelar
           </Link>
         </div>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="module-copy mt-1 text-sm">
           Rellena lo mínimo. Se guardará y aparecerá en el tablero.
         </p>
       </header>
 
-      <section className="rounded-2xl bg-white p-4 shadow-sm space-y-4">
+      <section className="mx-auto w-full max-w-3xl space-y-4 surface-content p-4">
         <div>
-          <label className="text-sm font-medium text-gray-700">Matrícula</label>
+          <label className="text-sm font-extrabold text-slate-700">Matrícula</label>
           <input
-            className="mt-1 w-full rounded-xl border border-gray-200 p-3"
+            className="mt-1 w-full rounded-xl border-2 border-slate-200 p-3 font-semibold text-slate-900"
             value={matricula}
             onChange={(e) => setMatricula(e.target.value)}
             placeholder="1234-ABC"
@@ -86,35 +73,81 @@ export default function NuevaOTPage() {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700">Título</label>
+          <label className="text-sm font-extrabold text-slate-700">Trabajo</label>
           <input
-            className="mt-1 w-full rounded-xl border border-gray-200 p-3"
+            className="mt-1 w-full rounded-xl border-2 border-slate-200 p-3 font-semibold text-slate-900"
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
             placeholder="Revisión tacógrafo"
           />
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-gray-700">Prioridad</label>
-          <select
-            className="mt-1 w-full rounded-xl border border-gray-200 p-3"
-            value={prio}
-            onChange={(e) => setPrio(e.target.value as any)}
-          >
-            <option value="Normal">Normal</option>
-            <option value="Alta">Alta</option>
-            <option value="Urgente">Urgente</option>
-          </select>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-extrabold text-slate-700">Cliente <span className="font-normal text-slate-400">(opcional)</span></label>
+            <input
+              className="mt-1 w-full rounded-xl border-2 border-slate-200 p-3 font-semibold text-slate-900"
+              value={cliente}
+              onChange={(e) => setCliente(e.target.value)}
+              placeholder="Juan García"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-extrabold text-slate-700">Teléfono <span className="font-normal text-slate-400">(opcional)</span></label>
+            <input
+              className="mt-1 w-full rounded-xl border-2 border-slate-200 p-3 font-semibold text-slate-900"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              placeholder="666 123 456"
+              inputMode="tel"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-extrabold text-slate-700">Tiempo est. <span className="font-normal text-slate-400">(opcional)</span></label>
+            <select
+              className="mt-1 w-full rounded-xl border-2 border-slate-200 p-3 font-semibold text-slate-900"
+              value={tiempo}
+              onChange={(e) => setTiempo(e.target.value)}
+            >
+              <option value="">—</option>
+              <option value="30">30 min</option>
+              <option value="60">1 hora</option>
+              <option value="90">1,5 h</option>
+              <option value="120">2 horas</option>
+              <option value="180">3 horas</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-extrabold text-slate-700">Prioridad</label>
+            <select
+              className="mt-1 w-full rounded-xl border-2 border-slate-200 p-3 font-semibold text-slate-900"
+              value={prio}
+              onChange={(e) => setPrio(e.target.value as OtPriority)}
+            >
+              <option value="Normal">Normal</option>
+              <option value="Alta">Alta</option>
+              <option value="Urgente">Urgente</option>
+            </select>
+          </div>
         </div>
 
         <button
-          disabled={!canCreate}
+          disabled={!canCreate || isSaving}
           onClick={crearOT}
-          className="w-full rounded-2xl bg-blue-600 p-4 text-lg font-semibold text-white disabled:opacity-40"
+          className="cta-primary inline-flex w-full items-center justify-center gap-2 p-4 text-lg disabled:opacity-40"
         >
-          Crear OT
+          <Icon name="new" className="h-5 w-5" />
+          {isSaving ? "Creando..." : "Crear OT"}
         </button>
+
+        {error && (
+          <div className="rounded-xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+            {error}
+          </div>
+        )}
       </section>
 
       <MobileNav />
