@@ -2,9 +2,10 @@
   "name": "Talleres MALU",
   "short_name": "Taller",
   "description": "Gestión interna: citas, trabajos, inventario y avisos.",
-  "start_url": "/",
+  "start_url": "/inicio",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "portrait",
   "background_color": "#0c2540",
   "theme_color": "#0c2540",
@@ -15,7 +16,25 @@
       "src": "/icon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ]
 }

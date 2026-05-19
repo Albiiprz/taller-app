@@ -1,5 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { PwaInstallPrompt } from "./components/PwaInstallPrompt";
+import { PwaSwRegister } from "./components/PwaSwRegister";
 
 export const metadata: Metadata = {
   title: "Talleres MALU",
@@ -7,9 +9,13 @@ export const metadata: Metadata = {
   applicationName: "Talleres MALU",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    shortcut: ["/icon.svg"],
-    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: ["/icon-192.png"],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -37,7 +43,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" translate="no" suppressHydrationWarning>
-      <body className="bg-gray-50" suppressHydrationWarning>{children}</body>
+      <body className="bg-gray-50" suppressHydrationWarning>
+        {children}
+        <PwaSwRegister />
+        <PwaInstallPrompt />
+      </body>
     </html>
   );
 }
