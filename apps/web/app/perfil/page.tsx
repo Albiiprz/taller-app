@@ -1,11 +1,17 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MobileNav from "../components/MobileNav";
 import { Role, User, useSession } from "../components/useSession";
 import { logoutApi } from "../core/authApi";
+import {
+  getPushPublicKey,
+  sendPushTestApi,
+  subscribePushApi,
+  unsubscribePushApi,
+} from "../core/pushApi";
 import { Icon } from "../components/ui/Icon";
 import InfoHint from "../components/ui/InfoHint";
 
@@ -73,13 +79,36 @@ function paneButtonClass(active: boolean) {
     : "border-slate-200 bg-white text-slate-800";
 }
 
+function base64ToUint8Array(base64: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const normalized = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(normalized);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
 export default function PerfilPage() {
   const router = useRouter();
   const { users, activeUser, saveUsers, hasRole } = useSession();
   const isAdmin = hasRole("Administración");
   const me = activeUser;
   const [saving, setSaving] = useState(false);
+  const [pushReady, setPushReady] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const [pane, setPane] = useState<ProfilePane>("me");
+
+  useEffect(() => {
+    async function detectPush() {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      setPushReady(true);
+      setPushEnabled(Boolean(existing));
+    }
+    void detectPush();
+  }, []);
 
   if (!me) {
     return (
@@ -117,6 +146,62 @@ export default function PerfilPage() {
   async function onLogout() {
     await logoutApi();
     router.push("/login");
+  }
+
+  async function enablePush() {
+    if (!pushReady) return;
+    try {
+      setPushBusy(true);
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) {
+        await subscribePushApi(existing);
+        setPushEnabled(true);
+        return;
+      }
+      const publicKey = await getPushPublicKey();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: base64ToUint8Array(publicKey),
+      });
+      await subscribePushApi(sub);
+      setPushEnabled(true);
+      alert("Notificaciones activadas.");
+    } catch {
+      alert("No se pudo activar notificaciones. Revisa permisos del navegador.");
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function disablePush() {
+    try {
+      setPushBusy(true);
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await unsubscribePushApi(sub.endpoint);
+        await sub.unsubscribe();
+      }
+      setPushEnabled(false);
+      alert("Notificaciones desactivadas.");
+    } catch {
+      alert("No se pudo desactivar notificaciones.");
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function sendTestPush() {
+    try {
+      setPushBusy(true);
+      await sendPushTestApi();
+      alert("Enviado. Si no llega, revisa permisos de notificación.");
+    } catch {
+      alert("No se pudo enviar la prueba.");
+    } finally {
+      setPushBusy(false);
+    }
   }
 
   return (
@@ -212,6 +297,44 @@ export default function PerfilPage() {
           {!isAdmin ? (
             <div className="mt-4 rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
               Solo Administración puede cambiar nombre, PIN y permisos.
+            </div>
+          ) : null}
+
+          {pushReady ? (
+            <div className="mt-4 rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-extrabold text-slate-900">Notificaciones en móvil</p>
+              <p className="mt-1 text-xs font-semibold text-slate-600">
+                Estado: {pushEnabled ? "activadas" : "desactivadas"}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {pushEnabled ? (
+                  <button
+                    type="button"
+                    onClick={() => void disablePush()}
+                    disabled={pushBusy}
+                    className="btn-tap rounded-2xl border-2 border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 disabled:opacity-40"
+                  >
+                    Desactivar
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void enablePush()}
+                    disabled={pushBusy}
+                    className="btn-tap rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white disabled:opacity-40"
+                  >
+                    Activar notificaciones
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void sendTestPush()}
+                  disabled={pushBusy || !pushEnabled}
+                  className="btn-tap rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800 disabled:opacity-40"
+                >
+                  Probar notificación
+                </button>
+              </div>
             </div>
           ) : null}
         </section>

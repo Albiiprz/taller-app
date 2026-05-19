@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import * as webpush from 'web-push';
 
 type NotificationJobRow = {
   id: number;
@@ -13,13 +14,32 @@ type NotificationJobRow = {
   created_at: string;
 };
 
+type PushSubscriptionRow = {
+  id: number;
+  user_id: number;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+};
+
 @Injectable()
 export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
+  private readonly vapidPublicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY ?? '';
+  private readonly vapidPrivateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY ?? '';
+  private readonly vapidSubject =
+    process.env.WEB_PUSH_VAPID_SUBJECT ?? 'mailto:admin@taller-app.local';
 
   constructor(private readonly db: DatabaseService) {}
 
   onModuleInit() {
+    if (this.vapidPublicKey && this.vapidPrivateKey) {
+      webpush.setVapidDetails(
+        this.vapidSubject,
+        this.vapidPublicKey,
+        this.vapidPrivateKey,
+      );
+    }
     const enabled = (process.env.NOTIFICATION_WORKER_ENABLED ?? 'true').toLowerCase() !== 'false';
     if (!enabled) return;
     const everyMs = Number(process.env.NOTIFICATION_WORKER_INTERVAL_MS ?? 60_000);
@@ -31,6 +51,92 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy() {
     if (this.timer) clearInterval(this.timer);
+  }
+
+  getPushPublicKey() {
+    if (!this.vapidPublicKey) {
+      throw new Error(
+        'WEB_PUSH_VAPID_PUBLIC_KEY no configurada. Genera claves VAPID y rellena .env',
+      );
+    }
+    return this.vapidPublicKey;
+  }
+
+  async upsertPushSubscription(input: {
+    userId: number;
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    userAgent?: string;
+  }) {
+    if (!this.vapidPrivateKey || !this.vapidPublicKey) {
+      throw new Error('Web push no está configurado en servidor');
+    }
+    await this.db.query(
+      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (endpoint) DO UPDATE
+       SET user_id = EXCLUDED.user_id,
+           p256dh = EXCLUDED.p256dh,
+           auth = EXCLUDED.auth,
+           user_agent = EXCLUDED.user_agent,
+           updated_at = NOW()`,
+      [
+        input.userId,
+        input.endpoint,
+        input.p256dh,
+        input.auth,
+        input.userAgent ?? null,
+      ],
+    );
+    return { ok: true };
+  }
+
+  async removePushSubscription(input: { userId: number; endpoint: string }) {
+    await this.db.query(
+      `DELETE FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2`,
+      [input.userId, input.endpoint],
+    );
+    return { ok: true };
+  }
+
+  async sendPushTest(userId: number) {
+    if (!this.vapidPrivateKey || !this.vapidPublicKey) {
+      throw new Error('Web push no está configurado en servidor');
+    }
+    const subs = await this.db.query<PushSubscriptionRow>(
+      `SELECT id, user_id, endpoint, p256dh, auth
+       FROM push_subscriptions
+       WHERE user_id = $1`,
+      [userId],
+    );
+    let sent = 0;
+    let removed = 0;
+    for (const sub of subs.rows) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          JSON.stringify({
+            title: 'Talleres MALU',
+            body: 'Notificaciones activadas correctamente.',
+            url: '/avisos',
+          }),
+        );
+        sent += 1;
+      } catch (e) {
+        const statusCode = (e as { statusCode?: number })?.statusCode;
+        if (statusCode === 404 || statusCode === 410) {
+          await this.db.query(`DELETE FROM push_subscriptions WHERE id = $1`, [
+            sub.id,
+          ]);
+          removed += 1;
+        }
+      }
+    }
+    return { subscriptions: subs.rows.length, sent, removed };
   }
 
   async listJobs(status?: string) {

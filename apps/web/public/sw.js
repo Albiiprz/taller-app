@@ -53,3 +53,36 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+
+self.addEventListener("push", (event) => {
+  let data = { title: "Talleres MALU", body: "Tienes una notificación", url: "/avisos" };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    // ignore invalid payload
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url ?? "/avisos" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = event.notification?.data?.url ?? "/avisos";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      const same = windows.find((w) => "focus" in w);
+      if (same) {
+        same.focus();
+        if ("navigate" in same) return same.navigate(target);
+        return undefined;
+      }
+      return clients.openWindow(target);
+    }),
+  );
+});
