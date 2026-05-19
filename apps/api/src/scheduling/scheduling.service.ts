@@ -1030,9 +1030,11 @@ export class SchedulingService {
   ) {
     if (endAt.getTime() <= startAt.getTime()) return false;
 
-    const day = this.parseDateOnly(this.formatDateOnly(startAt), 'day');
+    const day = this.parseDateOnly(this.formatDateOnlyInTimezone(startAt, this.defaultTimezone), 'day');
     const dayOfWeek = this.dayOfWeek(day);
     const weekPattern = await this.getWeekPatternForDate(day);
+    const startWall = this.toTimezoneWallUtc(startAt, this.defaultTimezone);
+    const endWall = this.toTimezoneWallUtc(endAt, this.defaultTimezone);
 
     const rules = await this.db.query<RuleRow>(
       `SELECT * FROM technician_schedule_rules
@@ -1045,7 +1047,7 @@ export class SchedulingService {
     const insideWorkingHours = rules.rows.some((rule) => {
       const ruleStart = this.combineDateAndTime(day, rule.start_time);
       const ruleEnd = this.combineDateAndTime(day, rule.end_time);
-      return startAt.getTime() >= ruleStart.getTime() && endAt.getTime() <= ruleEnd.getTime();
+      return startWall.getTime() >= ruleStart.getTime() && endWall.getTime() <= ruleEnd.getTime();
     });
     if (!insideWorkingHours) return false;
 
@@ -1653,6 +1655,40 @@ export class SchedulingService {
 
   private formatDateOnly(date: Date) {
     return date.toISOString().slice(0, 10);
+  }
+
+  private formatDateOnlyInTimezone(date: Date, timeZone: string) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value;
+    const day = parts.find((p) => p.type === 'day')?.value;
+    if (!year || !month || !day) return this.formatDateOnly(date);
+    return `${year}-${month}-${day}`;
+  }
+
+  private toTimezoneWallUtc(date: Date, timeZone: string) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(date);
+    const year = Number(parts.find((p) => p.type === 'year')?.value);
+    const month = Number(parts.find((p) => p.type === 'month')?.value);
+    const day = Number(parts.find((p) => p.type === 'day')?.value);
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value);
+    const minute = Number(parts.find((p) => p.type === 'minute')?.value);
+    const second = Number(parts.find((p) => p.type === 'second')?.value);
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, second, 0));
   }
 
   private formatHumanDate(date: Date) {
