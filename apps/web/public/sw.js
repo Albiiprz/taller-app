@@ -1,4 +1,4 @@
-const CACHE_NAME = "taller-app-shell-v1";
+const CACHE_NAME = "taller-app-shell-v2";
 const APP_SHELL = [
   "/",
   "/inicio",
@@ -24,12 +24,27 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+
+  // Never cache API/auth requests.
+  if (url.pathname.startsWith("/api/")) return;
+  const isStaticAsset =
+    url.pathname.startsWith("/_next/") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".png") ||
+    url.pathname.endsWith(".svg") ||
+    url.pathname.endsWith(".webp") ||
+    url.pathname.endsWith(".ico") ||
+    url.pathname.endsWith(".woff2") ||
+    url.pathname === "/manifest.webmanifest";
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) return cached;
+      if (cached && isStaticAsset) return cached;
       return fetch(event.request)
         .then((response) => {
+          if (!isStaticAsset || !response.ok) return response;
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           return response;
@@ -38,4 +53,3 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
-
