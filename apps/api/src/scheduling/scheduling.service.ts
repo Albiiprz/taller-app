@@ -969,8 +969,9 @@ export class SchedulingService {
     durationMinutes: number,
     ignoreAppointmentId?: number,
   ) {
-    const dayStart = new Date(`${this.formatDateOnly(dateOnly)}T00:00:00.000Z`);
-    const dayEnd = new Date(`${this.formatDateOnly(dateOnly)}T23:59:59.999Z`);
+    const dayStart = this.wallDateTimeToUtc(dateOnly, '00:00', this.defaultTimezone);
+    const nextDay = this.addDays(dateOnly, 1);
+    const dayEnd = new Date(this.wallDateTimeToUtc(nextDay, '00:00', this.defaultTimezone).getTime() - 1);
     const dayOfWeek = this.dayOfWeek(dateOnly);
     const weekPattern = await this.getWeekPatternForDate(dateOnly);
 
@@ -1000,8 +1001,8 @@ export class SchedulingService {
     const afternoonSlots: Array<{ startAt: string; endAt: string }> = [];
 
     for (const rule of rules.rows) {
-      const ruleStart = this.combineDateAndTime(dateOnly, rule.start_time);
-      const ruleEnd = this.combineDateAndTime(dateOnly, rule.end_time);
+      const ruleStart = this.wallDateTimeToUtc(dateOnly, rule.start_time, this.defaultTimezone);
+      const ruleEnd = this.wallDateTimeToUtc(dateOnly, rule.end_time, this.defaultTimezone);
       for (
         let slotStart = new Date(ruleStart);
         slotStart.getTime() + durationMinutes * 60_000 <= ruleEnd.getTime();
@@ -1689,6 +1690,19 @@ export class SchedulingService {
     const minute = Number(parts.find((p) => p.type === 'minute')?.value);
     const second = Number(parts.find((p) => p.type === 'second')?.value);
     return new Date(Date.UTC(year, month - 1, day, hour, minute, second, 0));
+  }
+
+  private wallDateTimeToUtc(dateOnly: Date, hhmm: string, timeZone: string) {
+    const wallTarget = this.combineDateAndTime(dateOnly, hhmm);
+    let guess = new Date(wallTarget);
+    // Resolve DST/offset by converging wall time in timezone -> desired wall target.
+    for (let i = 0; i < 4; i += 1) {
+      const wallFromGuess = this.toTimezoneWallUtc(guess, timeZone);
+      const deltaMs = wallFromGuess.getTime() - wallTarget.getTime();
+      if (deltaMs === 0) break;
+      guess = new Date(guess.getTime() - deltaMs);
+    }
+    return guess;
   }
 
   private formatHumanDate(date: Date) {
