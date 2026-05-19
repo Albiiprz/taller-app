@@ -62,6 +62,7 @@ type AppointmentDetailRow = AppointmentRow & {
   vehicle_model: string | null;
   vehicle_notes: string | null;
   technician_name: string | null;
+  technician_login_name: string | null;
 };
 
 @Injectable()
@@ -1184,7 +1185,8 @@ export class SchedulingService {
               v.vin AS vehicle_vin,
               v.vehicle_type AS vehicle_model,
               v.tachograph_model AS vehicle_notes,
-              u.name AS technician_name
+              u.name AS technician_name,
+              u.login_name AS technician_login_name
        FROM appointments a
        LEFT JOIN clients c ON c.id = a.client_id
        LEFT JOIN vehicles v ON v.id = a.vehicle_id
@@ -1507,6 +1509,7 @@ export class SchedulingService {
       clientEmail: detail.client_email,
       vehiclePlate: detail.vehicle_plate,
       technicianName: detail.technician_name,
+      technicianLogin: detail.technician_login_name,
     });
 
     if (result.eventId && result.eventId !== detail.google_event_id) {

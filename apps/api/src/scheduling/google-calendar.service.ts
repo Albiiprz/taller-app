@@ -29,6 +29,7 @@ type UpsertAppointmentEventInput = {
   clientEmail?: string | null;
   vehiclePlate?: string | null;
   technicianName?: string | null;
+  technicianLogin?: string | null;
 };
 
 type UpsertAppointmentEventResult = {
@@ -250,6 +251,8 @@ export class GoogleCalendarService {
         .toLowerCase()
         .trim() === 'true';
 
+    const colorId = this.resolveColorId(input.technicianLogin, input.technicianName);
+
     return {
       summary,
       description: lines.join('\n'),
@@ -258,6 +261,7 @@ export class GoogleCalendarService {
       ...(includeAttendees && input.clientEmail
         ? { attendees: [{ email: input.clientEmail }] }
         : {}),
+      ...(colorId ? { colorId } : {}),
       extendedProperties: {
         private: {
           appointmentId: String(input.appointmentId),
@@ -265,6 +269,33 @@ export class GoogleCalendarService {
         },
       },
     };
+  }
+
+  private resolveColorId(technicianLogin?: string | null, technicianName?: string | null): string | null {
+    const rawMap = (process.env.GOOGLE_CALENDAR_COLOR_MAP ?? '').trim();
+    if (!rawMap) return null;
+
+    const map = new Map<string, string>();
+    for (const chunk of rawMap.split(',')) {
+      const [k, v] = chunk.split(':').map((s) => s.trim());
+      if (!k || !v) continue;
+      if (!/^\d+$/.test(v)) continue;
+      map.set(this.normalizeKey(k), v);
+    }
+
+    const byLogin = technicianLogin ? map.get(this.normalizeKey(technicianLogin)) : null;
+    if (byLogin) return byLogin;
+    const byName = technicianName ? map.get(this.normalizeKey(technicianName)) : null;
+    if (byName) return byName;
+    return map.get('default') ?? null;
+  }
+
+  private normalizeKey(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, '');
   }
 
   private async callCalendarJson(
