@@ -245,12 +245,19 @@ export class GoogleCalendarService {
       `ID cita interna: ${input.appointmentId}`,
     ].filter(Boolean);
 
+    const includeAttendees =
+      (process.env.GOOGLE_CALENDAR_INCLUDE_ATTENDEES ?? 'false')
+        .toLowerCase()
+        .trim() === 'true';
+
     return {
       summary,
       description: lines.join('\n'),
       start: { dateTime: input.startAt, timeZone: timezone },
       end: { dateTime: input.endAt, timeZone: timezone },
-      ...(input.clientEmail ? { attendees: [{ email: input.clientEmail }] } : {}),
+      ...(includeAttendees && input.clientEmail
+        ? { attendees: [{ email: input.clientEmail }] }
+        : {}),
       extendedProperties: {
         private: {
           appointmentId: String(input.appointmentId),
