@@ -1028,12 +1028,39 @@ export class SchedulingService {
     endAt: Date,
     ignoreAppointmentId?: number,
   ) {
-    const duration = Math.round((endAt.getTime() - startAt.getTime()) / 60000);
+    if (endAt.getTime() <= startAt.getTime()) return false;
+
     const day = this.parseDateOnly(this.formatDateOnly(startAt), 'day');
-    const oneDay = await this.computeDayAvailability(technicianId, day, duration, ignoreAppointmentId);
-    return [...oneDay.morningSlots, ...oneDay.afternoonSlots].some(
-      (s) => s.startAt === startAt.toISOString() && s.endAt === endAt.toISOString(),
+    const dayOfWeek = this.dayOfWeek(day);
+    const weekPattern = await this.getWeekPatternForDate(day);
+
+    const rules = await this.db.query<RuleRow>(
+      `SELECT * FROM technician_schedule_rules
+       WHERE technician_id = $1 AND is_active = TRUE AND day_of_week = $2
+         AND (week_pattern = 'ALL' OR week_pattern = $3)`,
+      [technicianId, dayOfWeek, weekPattern],
     );
+    if (rules.rows.length === 0) return false;
+
+    const insideWorkingHours = rules.rows.some((rule) => {
+      const ruleStart = this.combineDateAndTime(day, rule.start_time);
+      const ruleEnd = this.combineDateAndTime(day, rule.end_time);
+      return startAt.getTime() >= ruleStart.getTime() && endAt.getTime() <= ruleEnd.getTime();
+    });
+    if (!insideWorkingHours) return false;
+
+    const values: unknown[] = [technicianId, startAt.toISOString(), endAt.toISOString()];
+    let sql = `SELECT 1
+               FROM time_blocks
+               WHERE technician_id = $1 AND is_active = TRUE
+                 AND start_at < $3 AND end_at > $2`;
+    if (ignoreAppointmentId) {
+      sql += ` AND NOT (type = 'APPOINTMENT' AND source_id = $4)`;
+      values.push(ignoreAppointmentId);
+    }
+    sql += ` LIMIT 1`;
+    const conflict = await this.db.query(sql, values);
+    return conflict.rowCount === 0;
   }
 
   private async upsertClient(input: { name: string; phone: string; email?: string; type?: string }) {
