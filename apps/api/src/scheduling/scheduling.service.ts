@@ -547,6 +547,61 @@ export class SchedulingService {
         workOrder.rows[0].id,
       ]);
 
+      const workOrderId = workOrder.rows[0].id;
+      const titleBase = event.summary?.trim() || 'Cita importada';
+      const bodyBase = plate
+        ? `${titleBase} · ${plate}`
+        : titleBase;
+      const now = new Date();
+      const reminderBefore = new Date(startAt.getTime() - 5 * 60 * 1000);
+      const reminderAfter = new Date(startAt.getTime() + 5 * 60 * 1000);
+
+      await this.db.query(
+        `INSERT INTO notification_jobs (appointment_id, type, channel, status, run_at, payload_json)
+         VALUES ($1, 'GCAL_APPOINTMENT_CREATED', 'WEB_PUSH', 'PENDING', $2, $3::jsonb)`,
+        [
+          appointment.id,
+          now.toISOString(),
+          JSON.stringify({
+            title: 'Nueva cita en calendario',
+            body: bodyBase,
+            url: `/ordenes/${workOrderId}`,
+          }),
+        ],
+      );
+
+      if (reminderBefore > now) {
+        await this.db.query(
+          `INSERT INTO notification_jobs (appointment_id, type, channel, status, run_at, payload_json)
+           VALUES ($1, 'GCAL_APPOINTMENT_REMINDER_MINUS_5', 'WEB_PUSH', 'PENDING', $2, $3::jsonb)`,
+          [
+            appointment.id,
+            reminderBefore.toISOString(),
+            JSON.stringify({
+              title: 'Cita en 5 minutos',
+              body: bodyBase,
+              url: `/ordenes/${workOrderId}`,
+            }),
+          ],
+        );
+      }
+
+      if (reminderAfter > now) {
+        await this.db.query(
+          `INSERT INTO notification_jobs (appointment_id, type, channel, status, run_at, payload_json)
+           VALUES ($1, 'GCAL_APPOINTMENT_REMINDER_PLUS_5', 'WEB_PUSH', 'PENDING', $2, $3::jsonb)`,
+          [
+            appointment.id,
+            reminderAfter.toISOString(),
+            JSON.stringify({
+              title: 'Abre la orden de trabajo',
+              body: `Han pasado 5 minutos de la cita: ${bodyBase}`,
+              url: `/ordenes/${workOrderId}`,
+            }),
+          ],
+        );
+      }
+
       await this.pushAudit(
         'APPOINTMENT',
         String(appointment.id),

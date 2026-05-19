@@ -6,6 +6,6 @@ import { SchedulingService } from './scheduling.service';
 @Module({
   imports: [DatabaseModule],
   providers: [SchedulingService, GoogleCalendarService],
-  exports: [SchedulingService],
+  exports: [SchedulingService, GoogleCalendarService],
 })
 export class SchedulingModule {}

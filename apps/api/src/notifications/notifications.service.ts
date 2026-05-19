@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as webpush from 'web-push';
+import { SchedulingService } from '../scheduling/scheduling.service';
 
 type NotificationJobRow = {
   id: number;
@@ -30,7 +31,10 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private readonly vapidSubject =
     process.env.WEB_PUSH_VAPID_SUBJECT ?? 'mailto:admin@taller-app.local';
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly scheduling: SchedulingService,
+  ) {}
 
   onModuleInit() {
     if (this.vapidPublicKey && this.vapidPrivateKey) {
@@ -44,9 +48,9 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     if (!enabled) return;
     const everyMs = Number(process.env.NOTIFICATION_WORKER_INTERVAL_MS ?? 60_000);
     this.timer = setInterval(() => {
-      void this.processDueJobs();
+      void this.tick();
     }, Number.isFinite(everyMs) && everyMs > 0 ? everyMs : 60_000);
-    void this.processDueJobs();
+    void this.tick();
   }
 
   onModuleDestroy() {
@@ -194,7 +198,33 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  private async tick() {
+    try {
+      await this.syncGoogleCalendarIntoApp();
+    } catch {
+      // avoid breaking the worker cycle
+    }
+    await this.processDueJobs();
+  }
+
   private async handleJob(job: NotificationJobRow) {
+    if (job.channel === 'WEB_PUSH') {
+      const payload = (job.payload_json ?? {}) as Record<string, unknown>;
+      const title =
+        typeof payload.title === 'string' && payload.title.trim()
+          ? payload.title
+          : 'Talleres MALU';
+      const body =
+        typeof payload.body === 'string' && payload.body.trim()
+          ? payload.body
+          : 'Hay una actualización en el taller.';
+      const url =
+        typeof payload.url === 'string' && payload.url.trim()
+          ? payload.url
+          : '/avisos';
+      await this.sendPushToAll({ title, body, url });
+      return;
+    }
     if (job.channel === 'INTERNAL') return;
     const payload = (job.payload_json ?? {}) as Record<string, unknown>;
     const phone = typeof payload.phone === 'string' ? payload.phone : '';
@@ -209,6 +239,59 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
 
     const sent = await this.sendWhatsAppAuto(phone, whText);
     if (!sent) throw new Error('Proveedor WhatsApp rechazó el envío');
+  }
+
+  private async sendPushToAll(input: { title: string; body: string; url: string }) {
+    if (!this.vapidPrivateKey || !this.vapidPublicKey) {
+      throw new Error('Web push no está configurado en servidor');
+    }
+    const subs = await this.db.query<PushSubscriptionRow>(
+      `SELECT id, user_id, endpoint, p256dh, auth FROM push_subscriptions`,
+    );
+    for (const sub of subs.rows) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          JSON.stringify(input),
+        );
+      } catch (e) {
+        const statusCode = (e as { statusCode?: number })?.statusCode;
+        if (statusCode === 404 || statusCode === 410) {
+          await this.db.query(`DELETE FROM push_subscriptions WHERE id = $1`, [
+            sub.id,
+          ]);
+        }
+      }
+    }
+  }
+
+  private async syncGoogleCalendarIntoApp() {
+    const enabled =
+      (process.env.GOOGLE_CALENDAR_IMPORT_AUTO_ENABLED ?? 'true')
+        .toLowerCase()
+        .trim() !== 'false';
+    if (!enabled) return;
+
+    const lookbackHours = Number(
+      process.env.GOOGLE_CALENDAR_IMPORT_LOOKBACK_HOURS ?? 24,
+    );
+    const lookaheadDays = Number(
+      process.env.GOOGLE_CALENDAR_IMPORT_LOOKAHEAD_DAYS ?? 90,
+    );
+    const now = new Date();
+    const since = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
+    const until = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000);
+
+    await this.scheduling.importFromGoogleCalendar({
+      since: since.toISOString(),
+      until: until.toISOString(),
+      dryRun: false,
+      actorRole: 'Sistema',
+      actorName: 'AutoSync Google Calendar',
+    });
   }
 
   private normalizePhone(phone: string) {
