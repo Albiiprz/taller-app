@@ -34,7 +34,8 @@ const TRANSITIONS: Record<OtStatus, OtStatus[]> = {
   DIAGNOSTICO: ['PRESUPUESTO_ENVIADO', 'REPARACION'],
   PRESUPUESTO_ENVIADO: ['APROBADO'],
   APROBADO: ['REPARACION'],
-  REPARACION: ['QC'],
+  // Workshop flow allows direct finish from repair without mandatory QC.
+  REPARACION: ['QC', 'LISTO_ENTREGA'],
   QC: ['LISTO_ENTREGA', 'REPARACION'],
   LISTO_ENTREGA: ['ENTREGADO'],
   ENTREGADO: ['FACTURADO'],
