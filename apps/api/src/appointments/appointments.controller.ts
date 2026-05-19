@@ -8,6 +8,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { CreateAppointmentDraftDto } from './dto/create-appointment-draft.dto';
 import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
+import { ImportGoogleAppointmentsDto } from './dto/import-google-appointments.dto';
 
 function ok(data: unknown) {
   return { statusCode: 200, data, error: null };
@@ -70,6 +71,20 @@ export class AppointmentsController {
     const data = await this.scheduling.cancelAppointment(id, {
       reason: dto.reason,
       cancelledBy: user?.sub,
+      actorRole: user?.role,
+      actorName: user?.name,
+    });
+    return ok(data);
+  }
+
+  @Post('import-google')
+  @Roles('ADMIN', 'OFICINA')
+  async importGoogle(@Body() dto: ImportGoogleAppointmentsDto, @Req() req: Request) {
+    const user = (req as Request & { user?: ReqUser }).user;
+    const data = await this.scheduling.importFromGoogleCalendar({
+      since: dto.since,
+      until: dto.until,
+      dryRun: dto.dryRun,
       actorRole: user?.role,
       actorName: user?.name,
     });

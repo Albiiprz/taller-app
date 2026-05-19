@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import { GoogleCalendarService } from './google-calendar.service';
+import { GoogleCalendarEvent, GoogleCalendarService } from './google-calendar.service';
 
 type TimeBlockType = 'APPOINTMENT' | 'VACATION' | 'INTERNAL';
 type DayStatus = 'GREEN' | 'YELLOW' | 'RED';
@@ -429,6 +429,143 @@ export class SchedulingService {
     return {
       appointment: this.toAppointmentDetailResponse(detail),
       createdAsDraft: true,
+    };
+  }
+
+  async importFromGoogleCalendar(input: {
+    since: string;
+    until?: string;
+    dryRun?: boolean;
+    actorRole?: string;
+    actorName?: string;
+  }) {
+    const since = this.parseIsoDate(input.since, 'since');
+    const until = input.until ? this.parseIsoDate(input.until, 'until') : null;
+    if (until && until <= since) {
+      throw new BadRequestException('until debe ser mayor que since');
+    }
+    const dryRun = Boolean(input.dryRun);
+
+    const genericTech = await this.getGenericTechnician();
+    await this.ensureTechnicianProfile(genericTech.id);
+
+    const events = await this.googleCalendar.listEvents({
+      timeMinIso: since.toISOString(),
+      timeMaxIso: until?.toISOString() ?? undefined,
+      maxResults: 500,
+    });
+
+    let imported = 0;
+    let skippedDuplicate = 0;
+    let skippedInvalid = 0;
+    const preview: Array<{ eventId: string; summary: string; startAt: string; endAt: string }> = [];
+
+    for (const event of events) {
+      const parsed = this.parseImportEventDates(event);
+      if (!parsed) {
+        skippedInvalid += 1;
+        continue;
+      }
+      const { startAt, endAt } = parsed;
+      if (until && startAt >= until) continue;
+
+      const existing = await this.db.query<{ id: number }>(
+        `SELECT id FROM appointments WHERE google_event_id = $1 LIMIT 1`,
+        [event.id],
+      );
+      if (existing.rows[0]) {
+        skippedDuplicate += 1;
+        continue;
+      }
+
+      if (dryRun) {
+        preview.push({
+          eventId: event.id,
+          summary: event.summary?.trim() || 'Cita importada',
+          startAt: startAt.toISOString(),
+          endAt: endAt.toISOString(),
+        });
+        imported += 1;
+        continue;
+      }
+
+      const clientId = await this.upsertClientOptional({
+        name: 'Cliente Google',
+        phone: '',
+        email: '',
+      });
+      const plate = this.extractPlateFromText(`${event.summary ?? ''} ${event.description ?? ''}`);
+      const vehicleId = await this.upsertVehicle({
+        plate: plate ?? `GCAL-${event.id.slice(0, 8).toUpperCase()}`,
+      });
+
+      const appt = await this.db.query<AppointmentRow>(
+        `INSERT INTO appointments (client_id, vehicle_id, technician_id, status, work_type, notes, start_at, end_at, google_event_id)
+         VALUES ($1, $2, $3, 'ACTIVE', $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [
+          clientId,
+          vehicleId,
+          genericTech.id,
+          event.summary?.trim() || 'Cita importada',
+          event.description?.trim() || '',
+          startAt.toISOString(),
+          endAt.toISOString(),
+          event.id,
+        ],
+      );
+      const appointment = appt.rows[0];
+
+      await this.db.query(
+        `INSERT INTO time_blocks (technician_id, type, start_at, end_at, source_id, note)
+         VALUES ($1, 'APPOINTMENT', $2, $3, $4, $5)`,
+        [
+          genericTech.id,
+          startAt.toISOString(),
+          endAt.toISOString(),
+          appointment.id,
+          `Importado Google #${appointment.id}`,
+        ],
+      );
+
+      const workOrder = await this.db.query<{ id: number }>(
+        `INSERT INTO work_orders (plate, title, priority, status, client_id, vehicle_id, assigned_to_user_id, scheduled_start, scheduled_end)
+         VALUES ($1, $2, 'Normal', 'PROGRAMADA', $3, $4, NULL, $5, $6)
+         RETURNING id`,
+        [
+          plate ?? 'SIN-MATRICULA',
+          event.summary?.trim() || 'Cita importada',
+          clientId,
+          vehicleId,
+          startAt.toISOString(),
+          endAt.toISOString(),
+        ],
+      );
+
+      await this.db.query(`UPDATE appointments SET work_order_id = $2 WHERE id = $1`, [
+        appointment.id,
+        workOrder.rows[0].id,
+      ]);
+
+      await this.pushAudit(
+        'APPOINTMENT',
+        String(appointment.id),
+        'GOOGLE_CALENDAR_IMPORT',
+        input.actorRole ?? null,
+        input.actorName ?? null,
+        { eventId: event.id },
+      );
+      imported += 1;
+    }
+
+    return {
+      dryRun,
+      genericTechnician: { id: String(genericTech.id), name: genericTech.name, login: genericTech.login_name },
+      scanned: events.length,
+      imported,
+      skippedDuplicate,
+      skippedInvalid,
+      preview: preview.slice(0, 100),
     };
   }
 
@@ -908,6 +1045,54 @@ export class SchedulingService {
       [plate, vehicle.vin?.trim() || null, vehicle.model?.trim() || null, vehicle.notes?.trim() || null],
     );
     return created.rows[0].id;
+  }
+
+  private async getGenericTechnician() {
+    const preferredLogin = (process.env.GOOGLE_IMPORT_TECHNICIAN_LOGIN ?? 'tecnico').trim();
+    const byLogin = await this.db.query<{ id: number; name: string; login_name: string | null }>(
+      `SELECT id, name, login_name
+       FROM users
+       WHERE is_active = TRUE
+         AND login_name = $1
+       LIMIT 1`,
+      [preferredLogin],
+    );
+    if (byLogin.rows[0]) return byLogin.rows[0];
+
+    const firstTech = await this.db.query<{ id: number; name: string; login_name: string | null }>(
+      `SELECT id, name, login_name
+       FROM users
+       WHERE is_active = TRUE
+         AND (
+           translate(lower(role), 'áéíóú', 'aeiou') = 'tecnico'
+           OR roles_json ? 'Técnico'
+           OR roles_json ? 'Jefe de Taller'
+         )
+       ORDER BY id ASC
+       LIMIT 1`,
+    );
+    const fallback = firstTech.rows[0];
+    if (!fallback) {
+      throw new BadRequestException(
+        'No hay técnico activo para importar. Crea uno o define GOOGLE_IMPORT_TECHNICIAN_LOGIN',
+      );
+    }
+    return fallback;
+  }
+
+  private parseImportEventDates(event: GoogleCalendarEvent) {
+    if (!event.startAt || !event.endAt) return null;
+    const startAt = new Date(event.startAt);
+    const endAtRaw = new Date(event.endAt);
+    if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAtRaw.getTime())) return null;
+    const endAt = endAtRaw > startAt ? endAtRaw : new Date(startAt.getTime() + 60 * 60 * 1000);
+    return { startAt, endAt };
+  }
+
+  private extractPlateFromText(text: string): string | null {
+    const normalized = text.toUpperCase();
+    const match = normalized.match(/\b\d{4}[A-Z]{3}\b|\b[A-Z]{1,2}\d{4}[A-Z]{1,2}\b/);
+    return match?.[0] ?? null;
   }
 
   private async listActiveTechnicians() {

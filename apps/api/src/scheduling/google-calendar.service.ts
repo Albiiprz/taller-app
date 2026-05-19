@@ -47,6 +47,14 @@ type DeleteEventResult = {
   error: string | null;
 };
 
+export type GoogleCalendarEvent = {
+  id: string;
+  summary: string | null;
+  description: string | null;
+  startAt: string | null;
+  endAt: string | null;
+};
+
 @Injectable()
 export class GoogleCalendarService {
   private readonly logger = new Logger(GoogleCalendarService.name);
@@ -153,6 +161,76 @@ export class GoogleCalendarService {
       action: 'failed',
       error: this.extractError(res.text, res.json),
     };
+  }
+
+  async listEvents(input: {
+    timeMinIso: string;
+    timeMaxIso?: string | null;
+    maxResults?: number;
+  }): Promise<GoogleCalendarEvent[]> {
+    const cfg = await this.getConfig();
+    if (!cfg) return [];
+
+    const maxResults = Math.min(
+      Math.max(Number(input.maxResults ?? 250), 1),
+      2500,
+    );
+
+    let pageToken: string | undefined;
+    const out: GoogleCalendarEvent[] = [];
+    while (true) {
+      const params = new URLSearchParams({
+        singleEvents: 'true',
+        orderBy: 'startTime',
+        maxResults: String(maxResults),
+        timeMin: input.timeMinIso,
+      });
+      if (input.timeMaxIso) params.set('timeMax', input.timeMaxIso);
+      if (pageToken) params.set('pageToken', pageToken);
+
+      const res = await this.callCalendarJson(
+        cfg,
+        'GET',
+        `/calendar/v3/calendars/${encodeURIComponent(
+          cfg.calendarId,
+        )}/events?${params.toString()}`,
+      );
+      if (!res.ok) {
+        throw new Error(this.extractError(res.text, res.json));
+      }
+      const items = Array.isArray(res.json?.items)
+        ? (res.json?.items as Array<Record<string, unknown>>)
+        : [];
+
+      for (const item of items) {
+        const startRaw = item.start as Record<string, unknown> | undefined;
+        const endRaw = item.end as Record<string, unknown> | undefined;
+        const startAt =
+          (typeof startRaw?.dateTime === 'string' && startRaw.dateTime) ||
+          (typeof startRaw?.date === 'string' && `${startRaw.date}T09:00:00.000Z`) ||
+          null;
+        const endAt =
+          (typeof endRaw?.dateTime === 'string' && endRaw.dateTime) ||
+          (typeof endRaw?.date === 'string' && `${endRaw.date}T10:00:00.000Z`) ||
+          null;
+
+        out.push({
+          id: typeof item.id === 'string' ? item.id : '',
+          summary: typeof item.summary === 'string' ? item.summary : null,
+          description:
+            typeof item.description === 'string' ? item.description : null,
+          startAt,
+          endAt,
+        });
+      }
+
+      pageToken =
+        typeof res.json?.nextPageToken === 'string'
+          ? res.json.nextPageToken
+          : undefined;
+      if (!pageToken) break;
+    }
+    return out.filter((ev) => Boolean(ev.id));
   }
 
   private buildEventBody(timezone: string, input: UpsertAppointmentEventInput) {
