@@ -17,6 +17,7 @@ import {
   isReminderDone,
   isWeeklyReminderDay,
 } from "../core/weeklyScheduleReminder";
+import { getPushPublicKey, sendPushTestApi, subscribePushApi } from "../core/pushApi";
 
 type ActionTile = {
   href: string;
@@ -204,6 +205,9 @@ export default function InicioPage() {
   const [loadingPendings, setLoadingPendings] = useState(true);
   const [pendingsError, setPendingsError] = useState("");
   const [showWeeklyScheduleAlert, setShowWeeklyScheduleAlert] = useState(false);
+  const [pushReady, setPushReady] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const moduleClass = roleModuleClass(activeRole);
 
   useEffect(() => {
@@ -248,6 +252,63 @@ export default function InicioPage() {
       localStorage.setItem(soundKey, "1");
     }
   }, [activeRole]);
+
+  useEffect(() => {
+    async function detectPush() {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      setPushReady(true);
+      setPushEnabled(Boolean(existing));
+    }
+    void detectPush();
+  }, []);
+
+  function base64ToUint8Array(base64: string): Uint8Array {
+    const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+    const normalized = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(normalized);
+    const output = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
+    return output;
+  }
+
+  async function enablePush() {
+    if (!pushReady) return;
+    try {
+      setPushBusy(true);
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) {
+        await subscribePushApi(existing);
+        setPushEnabled(true);
+        return;
+      }
+      const publicKey = await getPushPublicKey();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: base64ToUint8Array(publicKey),
+      });
+      await subscribePushApi(sub);
+      setPushEnabled(true);
+    } catch {
+      alert("No se pudo activar notificaciones. Revisa permisos del navegador.");
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function sendPushTest() {
+    try {
+      setPushBusy(true);
+      await sendPushTestApi();
+      alert("Notificación de prueba enviada.");
+    } catch {
+      alert("No se pudo enviar la prueba.");
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   const roleRows = useMemo(() => filterOrdersForRoleDay(pendingOrders, activeRole, todayYmd()), [pendingOrders, activeRole]);
   const urgentRows = useMemo(() => pendingOrders.filter((ot) => ot.prio === "Urgente" && ot.stage !== "CERRADO" && ot.stage !== "FACTURADO"), [pendingOrders]);
@@ -472,6 +533,37 @@ export default function InicioPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </Link>
+        )}
+
+        {pushReady && !pushEnabled && (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+            <p className="text-sm font-extrabold text-blue-900">Activa notificaciones</p>
+            <p className="mt-1 text-xs font-semibold text-blue-700">
+              Así te avisamos cuando entren citas nuevas y en recordatorios de trabajo.
+            </p>
+            <button
+              type="button"
+              onClick={() => void enablePush()}
+              disabled={pushBusy}
+              className="btn-tap mt-3 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white disabled:opacity-40"
+            >
+              Activar notificaciones
+            </button>
+          </div>
+        )}
+
+        {pushReady && pushEnabled && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-sm font-extrabold text-emerald-900">Notificaciones activadas</p>
+            <button
+              type="button"
+              onClick={() => void sendPushTest()}
+              disabled={pushBusy}
+              className="btn-tap mt-2 rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-sm font-extrabold text-emerald-800 disabled:opacity-40"
+            >
+              Probar notificación
+            </button>
+          </div>
         )}
 
         {loadingPendings ? (
