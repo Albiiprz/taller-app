@@ -30,6 +30,7 @@ import {
   updateAppointment,
   updateWorkOrderStatus,
   upsertWorkOrderChecklist,
+  listUsers,
   type WorkOrderChecklist as ApiWorkOrderChecklist,
   type InventoryProduct,
   type WorkOrderNote as ApiWorkOrderNote,
@@ -207,12 +208,15 @@ export default function DetalleOT() {
   const [editClientName, setEditClientName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editCompany, setEditCompany] = useState("");
   const [editPlate, setEditPlate] = useState("");
   const [editModel, setEditModel] = useState("");
   const [editWorkType, setEditWorkType] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editStartAt, setEditStartAt] = useState("");
   const [editEndAt, setEditEndAt] = useState("");
+  const [editTechnicianId, setEditTechnicianId] = useState("");
+  const [technicianOptions, setTechnicianOptions] = useState<Array<{ id: string; name: string }>>([]);
 
   function showToast(type: NonNullable<Toast>["type"], message: string) {
     setToast({ type: type ?? "success", message });
@@ -353,13 +357,21 @@ export default function DetalleOT() {
     setEditClientName(ot.clientName ?? "");
     setEditPhone(ot.clientPhone ?? "");
     setEditEmail(ot.clientEmail ?? "");
+    setEditCompany("");
     setEditPlate(ot.plate ?? "");
     setEditModel(ot.vehicleModel ?? "");
     setEditWorkType(ot.appointmentWorkType ?? ot.title ?? "");
     setEditNotes(ot.appointmentNotes ?? "");
     setEditStartAt(toDateTimeLocal(ot.appointmentStart));
     setEditEndAt(toDateTimeLocal(ot.appointmentEnd));
+    setEditTechnicianId(ot.assignedToUserId ?? "");
   }, [ot]);
+
+  useEffect(() => {
+    listUsers({ role: "TECNICO" })
+      .then((users) => setTechnicianOptions(users.map((u) => ({ id: String(u.id), name: u.name }))))
+      .catch(() => setTechnicianOptions([]));
+  }, []);
 
   const timeline = useMemo<TimelineItem[]>(() => {
     const auditItems: TimelineItem[] = audit
@@ -606,19 +618,20 @@ export default function DetalleOT() {
       showToast("error", "Esta OT no tiene cita vinculada para editar.");
       return;
     }
-    if (!editStartAt || !editEndAt || !editWorkType.trim()) {
-      showToast("error", "Completa fecha inicio, fin y motivo.");
+    if (!editWorkType.trim()) {
+      showToast("error", "Indica el motivo del trabajo.");
       return;
     }
     try {
       await updateAppointment({
         id: ot.appointmentId,
-        client: { name: editClientName.trim() || undefined, phone: editPhone.trim() || undefined, email: editEmail.trim() || undefined },
+        client: { name: editClientName.trim() || undefined, phone: editPhone.trim() || undefined, email: editEmail.trim() || undefined, company: editCompany.trim() || undefined },
         vehicle: { plate: editPlate.trim() || undefined, model: editModel.trim() || undefined },
         workType: editWorkType.trim(),
         notes: editNotes.trim() || undefined,
-        startAt: new Date(editStartAt).toISOString(),
-        endAt: new Date(editEndAt).toISOString(),
+        technicianId: editTechnicianId || undefined,
+        startAt: editStartAt ? new Date(editStartAt).toISOString() : undefined,
+        endAt: editEndAt ? new Date(editEndAt).toISOString() : undefined,
       });
       await loadOrderFromApi();
       setEditingAppointment(false);
@@ -815,11 +828,18 @@ export default function DetalleOT() {
               <section className="mt-1 rounded-3xl border-2 border-slate-200 bg-white p-5">
                 <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Editar cita</p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editClientName} onChange={(e) => setEditClientName(e.target.value)} placeholder="Cliente / empresa" />
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editClientName} onChange={(e) => setEditClientName(e.target.value)} placeholder="Nombre cliente" />
                   <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Teléfono" />
                   <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email" />
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editCompany} onChange={(e) => setEditCompany(e.target.value)} placeholder="Empresa" />
                   <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editPlate} onChange={(e) => setEditPlate(e.target.value.toUpperCase())} placeholder="Matrícula" />
-                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold sm:col-span-2" value={editModel} onChange={(e) => setEditModel(e.target.value)} placeholder="Modelo vehículo" />
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editModel} onChange={(e) => setEditModel(e.target.value)} placeholder="Modelo vehículo" />
+                  <select className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold sm:col-span-2" value={editTechnicianId} onChange={(e) => setEditTechnicianId(e.target.value)}>
+                    <option value="">Sin técnico asignado</option>
+                    {technicianOptions.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
                   <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold sm:col-span-2" value={editWorkType} onChange={(e) => setEditWorkType(e.target.value)} placeholder="Motivo / trabajo" />
                   <input type="datetime-local" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editStartAt} onChange={(e) => setEditStartAt(e.target.value)} />
                   <input type="datetime-local" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editEndAt} onChange={(e) => setEditEndAt(e.target.value)} />
