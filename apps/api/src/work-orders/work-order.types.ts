@@ -43,6 +43,7 @@ export type WorkOrderResponse = {
   appointmentEnd: string | null;
   appointmentWorkType: string | null;
   appointmentNotes: string | null;
+  appointmentId: string | null;
   technicianName: string | null;
   clientId: number | null;
   vehicleId: number | null;

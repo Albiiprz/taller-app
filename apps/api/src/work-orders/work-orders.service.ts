@@ -11,6 +11,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import {
   canMoveByRoleAndFlow,
+  canRoleMoveTo,
   isAppRole,
   isOtPriority,
   isOtStatus,
@@ -47,6 +48,7 @@ type WorkOrderDetailRow = WorkOrderRow & {
   appointment_end: string | null;
   appointment_work_type: string | null;
   appointment_notes: string | null;
+  appointment_id: number | null;
   technician_name: string | null;
 };
 
@@ -64,6 +66,7 @@ export class WorkOrdersService {
            ap.end_at AS appointment_end,
            ap.work_type AS appointment_work_type,
            ap.notes AS appointment_notes,
+           ap.id AS appointment_id,
            tech.name AS technician_name
     FROM work_orders wo
     LEFT JOIN clients c ON c.id = wo.client_id
@@ -175,7 +178,10 @@ export class WorkOrdersService {
     const current = currentRes.rows[0];
     if (!current) throw new NotFoundException(`OT #${id} no encontrada`);
 
-    if (!canMoveByRoleAndFlow(role, current.status, dto.toStatus)) {
+    const normalAllowed = canMoveByRoleAndFlow(role, current.status, dto.toStatus);
+    const forceAllowedByRole = role === 'Administración' || role === 'Oficina' || role === 'Jefe de Taller';
+    const forceAllowed = dto.force === true && forceAllowedByRole && canRoleMoveTo(role, dto.toStatus);
+    if (!normalAllowed && !forceAllowed) {
       throw new BadRequestException(
         `Transición no permitida: ${current.status} -> ${dto.toStatus} para rol ${role}`,
       );
@@ -191,7 +197,7 @@ export class WorkOrdersService {
     await this.pushAudit({
       workOrderId: numericId,
       eventType: 'estado',
-      message: `Estado cambiado ${current.status} -> ${dto.toStatus}`,
+      message: `${forceAllowed ? 'Estado corregido' : 'Estado cambiado'} ${current.status} -> ${dto.toStatus}`,
       actorRole: role,
       actorName: dto.actorName ?? null,
       origin: this.normalizeOrigin(dto.origin),
@@ -780,6 +786,7 @@ export class WorkOrdersService {
       appointmentEnd: row.appointment_end ?? null,
       appointmentWorkType: row.appointment_work_type ?? null,
       appointmentNotes: row.appointment_notes ?? null,
+      appointmentId: row.appointment_id ? String(row.appointment_id) : null,
       technicianName: row.technician_name ?? null,
       clientId: row.client_id,
       vehicleId: row.vehicle_id,

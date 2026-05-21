@@ -25,6 +25,7 @@ type ApiWorkOrder = {
   appointmentEnd?: string | null;
   appointmentWorkType?: string | null;
   appointmentNotes?: string | null;
+  appointmentId?: string | null;
   technicianName?: string | null;
   assignedToUserId?: number | null;
   scheduledStart?: string | null;
@@ -229,6 +230,7 @@ function mapApiOrderToOtItem(row: ApiWorkOrder): OtItem {
     appointmentEnd: row.appointmentEnd ?? null,
     appointmentWorkType: row.appointmentWorkType ?? null,
     appointmentNotes: row.appointmentNotes ?? null,
+    appointmentId: row.appointmentId ?? null,
     technicianName: row.technicianName ?? null,
     prio: row.priority,
     stage: row.status,
@@ -359,6 +361,7 @@ export async function updateWorkOrderStatus(input: {
   actorRole: AppRole;
   actorName?: string;
   reason: string;
+  force?: boolean;
   origin?: string;
 }): Promise<OtItem> {
   const row = await apiFetch<ApiWorkOrder>(`/work-orders/${encodeURIComponent(input.id)}/status`, {
@@ -368,6 +371,7 @@ export async function updateWorkOrderStatus(input: {
       actorRole: input.actorRole,
       actorName: input.actorName,
       reason: input.reason,
+      force: input.force ?? false,
       origin: input.origin ?? "web",
     }),
   });

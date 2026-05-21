@@ -5,13 +5,11 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import MobileNav from "../../components/MobileNav";
 import RoleSelector from "../../components/RoleSelector";
-import { Icon } from "../../components/ui/Icon";
 import { useUndoAction } from "../../components/useUndoAction";
 import { Role, useRole } from "../../components/useRole";
 import { useSession } from "../../components/useSession";
 import {
   canRoleMoveOt,
-  getAllowedNextStatuses,
   statusBadgeClass,
   statusLabel,
 } from "../../core/workflow";
@@ -29,6 +27,7 @@ import {
   listInventoryProducts,
   startWorkOrderTime,
   stopWorkOrderTime,
+  updateAppointment,
   updateWorkOrderStatus,
   upsertWorkOrderChecklist,
   type WorkOrderChecklist as ApiWorkOrderChecklist,
@@ -139,6 +138,14 @@ function parseLocaleNumber(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function toDateTimeLocal(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
 function describeSnapshot(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const parts = Object.entries(data as Record<string, unknown>)
@@ -196,6 +203,16 @@ export default function DetalleOT() {
   const [reasonInput, setReasonInput] = useState("");
   const [photoTag, setPhotoTag] = useState<Photo["tag"]>("Avería");
   const [photoTagModalFile, setPhotoTagModalFile] = useState<File | null>(null);
+  const [editingAppointment, setEditingAppointment] = useState(false);
+  const [editClientName, setEditClientName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPlate, setEditPlate] = useState("");
+  const [editModel, setEditModel] = useState("");
+  const [editWorkType, setEditWorkType] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editStartAt, setEditStartAt] = useState("");
+  const [editEndAt, setEditEndAt] = useState("");
 
   function showToast(type: NonNullable<Toast>["type"], message: string) {
     setToast({ type: type ?? "success", message });
@@ -330,6 +347,19 @@ export default function DetalleOT() {
   const timeData = timeMap[id] ?? { totalSeconds: 0, running: false, startedAt: null, updatedAt: "", sessions: [] };
   const checklist = checklistMap[id] ?? { km: "", fuel: "1/2", damages: false, damagesText: "", hasKeys: true, hasDocs: true, hasTachoCard: false, tachoIssue: false, extra: "", updatedAt: "" };
   const photos = photosMap[id] ?? [];
+
+  useEffect(() => {
+    if (!ot) return;
+    setEditClientName(ot.clientName ?? "");
+    setEditPhone(ot.clientPhone ?? "");
+    setEditEmail(ot.clientEmail ?? "");
+    setEditPlate(ot.plate ?? "");
+    setEditModel(ot.vehicleModel ?? "");
+    setEditWorkType(ot.appointmentWorkType ?? ot.title ?? "");
+    setEditNotes(ot.appointmentNotes ?? "");
+    setEditStartAt(toDateTimeLocal(ot.appointmentStart));
+    setEditEndAt(toDateTimeLocal(ot.appointmentEnd));
+  }, [ot]);
 
   const timeline = useMemo<TimelineItem[]>(() => {
     const auditItems: TimelineItem[] = audit
@@ -538,15 +568,26 @@ export default function DetalleOT() {
 
   async function changeStage(nextStage: OtStatus) {
     if (!ot) return;
-    if (!canRoleMoveOt(role as Role, ot.stage, nextStage)) {
+    const canStandard = canRoleMoveOt(role as Role, ot.stage, nextStage);
+    const canForceByRole = role === "Administración" || role === "Oficina" || role === "Jefe de Taller";
+    const canForce = canForceByRole;
+    if (!canStandard && !canForce) {
       showToast("error", "No permitido por rol o por flujo.");
       return;
     }
-    const reason = await askReason(`cambiar a "${statusLabel(nextStage)}"`);
+    const reason = await askReason(`${canStandard ? "cambiar" : "corregir"} a "${statusLabel(nextStage)}"`);
     if (!reason) { showToast("error", "Debes indicar el motivo del cambio."); return; }
     const run = async () => {
       try {
-        const updated = await updateWorkOrderStatus({ id, toStatus: nextStage, actorRole: role as Role, actorName: activeUser?.name ?? "Usuario", reason, origin: "web" });
+        const updated = await updateWorkOrderStatus({
+          id,
+          toStatus: nextStage,
+          actorRole: role as Role,
+          actorName: activeUser?.name ?? "Usuario",
+          reason,
+          force: !canStandard,
+          origin: "web",
+        });
         setItems([updated]);
         await loadAuditFromApi();
         setIsMoveOpen(false);
@@ -558,6 +599,33 @@ export default function DetalleOT() {
       return;
     }
     await run();
+  }
+
+  async function saveAppointmentFromOt() {
+    if (!ot?.appointmentId) {
+      showToast("error", "Esta OT no tiene cita vinculada para editar.");
+      return;
+    }
+    if (!editStartAt || !editEndAt || !editWorkType.trim()) {
+      showToast("error", "Completa fecha inicio, fin y motivo.");
+      return;
+    }
+    try {
+      await updateAppointment({
+        id: ot.appointmentId,
+        client: { name: editClientName.trim() || undefined, phone: editPhone.trim() || undefined, email: editEmail.trim() || undefined },
+        vehicle: { plate: editPlate.trim() || undefined, model: editModel.trim() || undefined },
+        workType: editWorkType.trim(),
+        notes: editNotes.trim() || undefined,
+        startAt: new Date(editStartAt).toISOString(),
+        endAt: new Date(editEndAt).toISOString(),
+      });
+      await loadOrderFromApi();
+      setEditingAppointment(false);
+      showToast("success", "Datos de cita/reparación actualizados.");
+    } catch (e) {
+      showToast("error", e instanceof Error ? e.message : "No pude guardar cambios de cita.");
+    }
   }
 
   async function onPickPhoto(file: File, tag: Photo["tag"]) {
@@ -594,7 +662,8 @@ export default function DetalleOT() {
   }
 
   const allowedNextStages = ot
-    ? getAllowedNextStatuses(ot.stage).filter((s) => s !== ot.stage && canRoleMoveOt(role as Role, ot.stage, s))
+    ? (["PROGRAMADA", "PRE_ENTRADA", "RECEPCION", "DIAGNOSTICO", "PRESUPUESTO_ENVIADO", "APROBADO", "REPARACION", "QC", "LISTO_ENTREGA", "ENTREGADO", "FACTURADO", "CERRADO"] as OtStatus[])
+      .filter((s) => s !== ot.stage && (canRoleMoveOt(role as Role, ot.stage, s) || role === "Administración" || role === "Oficina" || role === "Jefe de Taller"))
     : [];
 
   const TABS: Array<{ key: Tab; label: string; count?: number }> = [
@@ -729,16 +798,43 @@ export default function DetalleOT() {
         ) : (
           <>
             <section className="mt-1 rounded-3xl border-2 border-slate-200 bg-white p-5">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Datos de cita</p>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <p className="text-sm font-semibold text-slate-700"><b>Fecha/hora:</b> {ot.appointmentStart ? formatDate(ot.appointmentStart) : "Sin cita asociada"}</p>
-                <p className="text-sm font-semibold text-slate-700"><b>Técnico:</b> {ot.technicianName || "Sin asignar"}</p>
-                <p className="text-sm font-semibold text-slate-700"><b>Cliente/Empresa:</b> {ot.clientName || "-"}</p>
-                <p className="text-sm font-semibold text-slate-700"><b>Teléfono:</b> {ot.clientPhone || "-"}</p>
-                <p className="text-sm font-semibold text-slate-700"><b>Email:</b> {ot.clientEmail || "-"}</p>
-                <p className="text-sm font-semibold text-slate-700"><b>Matrícula:</b> {ot.plate || "-"}</p>
-                <p className="text-sm font-semibold text-slate-700 sm:col-span-2"><b>Motivo:</b> {ot.appointmentWorkType || ot.title || "-"}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Datos de cita</p>
+                {ot.appointmentId ? (
+                  <button
+                    onClick={() => setEditingAppointment((v) => !v)}
+                    className="btn-tap rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700"
+                  >
+                    {editingAppointment ? "Cancelar edición" : "Editar cita"}
+                  </button>
+                ) : null}
               </div>
+              {editingAppointment ? (
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editClientName} onChange={(e) => setEditClientName(e.target.value)} placeholder="Cliente / empresa" />
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Teléfono" />
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email" />
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editPlate} onChange={(e) => setEditPlate(e.target.value.toUpperCase())} placeholder="Matrícula" />
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold sm:col-span-2" value={editModel} onChange={(e) => setEditModel(e.target.value)} placeholder="Modelo vehículo" />
+                  <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold sm:col-span-2" value={editWorkType} onChange={(e) => setEditWorkType(e.target.value)} placeholder="Motivo / trabajo" />
+                  <input type="datetime-local" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editStartAt} onChange={(e) => setEditStartAt(e.target.value)} />
+                  <input type="datetime-local" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editEndAt} onChange={(e) => setEditEndAt(e.target.value)} />
+                  <textarea className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold sm:col-span-2" rows={3} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Notas" />
+                  <button onClick={() => void saveAppointmentFromOt()} className="btn-tap rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white sm:col-span-2">
+                    Guardar cambios de cita
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <p className="text-sm font-semibold text-slate-700"><b>Fecha/hora:</b> {ot.appointmentStart ? formatDate(ot.appointmentStart) : "Sin cita asociada"}</p>
+                  <p className="text-sm font-semibold text-slate-700"><b>Técnico:</b> {ot.technicianName || "Sin asignar"}</p>
+                  <p className="text-sm font-semibold text-slate-700"><b>Cliente/Empresa:</b> {ot.clientName || "-"}</p>
+                  <p className="text-sm font-semibold text-slate-700"><b>Teléfono:</b> {ot.clientPhone || "-"}</p>
+                  <p className="text-sm font-semibold text-slate-700"><b>Email:</b> {ot.clientEmail || "-"}</p>
+                  <p className="text-sm font-semibold text-slate-700"><b>Matrícula:</b> {ot.plate || "-"}</p>
+                  <p className="text-sm font-semibold text-slate-700 sm:col-span-2"><b>Motivo:</b> {ot.appointmentWorkType || ot.title || "-"}</p>
+                </div>
+              )}
             </section>
 
             {/* ── CRONÓMETRO + EMPEZAR ── */}
@@ -1165,11 +1261,77 @@ export default function DetalleOT() {
                 >
                   Imprimir presupuesto
                 </button>
+                <article className="print-budget-a4 hidden print:block">
+                  <header className="print-budget-head">
+                    <h1>Talleres MALU</h1>
+                    <p>Presupuesto de reparación</p>
+                  </header>
+                  <section className="print-budget-meta">
+                    <p><b>OT:</b> #{ot.id}</p>
+                    <p><b>Fecha:</b> {new Date().toLocaleDateString("es-ES")}</p>
+                    <p><b>Cliente/Empresa:</b> {ot.clientName || "-"}</p>
+                    <p><b>Teléfono:</b> {ot.clientPhone || "-"}</p>
+                    <p><b>Email:</b> {ot.clientEmail || "-"}</p>
+                    <p><b>Matrícula:</b> {ot.plate || "-"}</p>
+                    <p><b>Vehículo:</b> {ot.vehicleModel || "-"}</p>
+                    <p><b>Motivo:</b> {ot.appointmentWorkType || ot.title || "-"}</p>
+                  </section>
+                  <table className="print-budget-table">
+                    <thead>
+                      <tr><th>Concepto</th><th>Cantidad</th><th>Precio</th><th>Importe</th></tr>
+                    </thead>
+                    <tbody>
+                      {budget.lines.map((line) => (
+                        <tr key={`p-${line.id}`}>
+                          <td>{line.concept || "-"}</td>
+                          <td>{line.qty}</td>
+                          <td>{line.price.toFixed(2)} EUR</td>
+                          <td>{(line.qty * line.price).toFixed(2)} EUR</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {(() => {
+                    const subtotal = budgetTotal(budget);
+                    const iva = subtotal * 0.21;
+                    const total = subtotal + iva;
+                    return (
+                      <section className="print-budget-totals">
+                        <p><b>Subtotal:</b> {subtotal.toFixed(2)} EUR</p>
+                        <p><b>IVA (21%):</b> {iva.toFixed(2)} EUR</p>
+                        <p><b>Total:</b> {total.toFixed(2)} EUR</p>
+                      </section>
+                    );
+                  })()}
+                  <footer className="print-budget-sign">
+                    <div><p>Firma taller</p><div /></div>
+                    <div><p>Firma cliente (aceptación)</p><div /></div>
+                  </footer>
+                </article>
               </section>
             )}
           </>
         )}
       </div>
+
+      <style jsx global>{`
+        @media print {
+          .mobile-nav-safe > * { display: none !important; }
+          .print-budget-a4 { display: block !important; margin: 0; color: #0f172a; font-family: Arial, sans-serif; }
+          .print-budget-head { border-bottom: 2px solid #0b2a4a; padding-bottom: 10px; margin-bottom: 14px; }
+          .print-budget-head h1 { margin: 0; font-size: 28px; color: #0b2a4a; }
+          .print-budget-head p { margin: 2px 0 0; font-size: 13px; color: #475569; }
+          .print-budget-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin-bottom: 14px; font-size: 12px; }
+          .print-budget-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          .print-budget-table th, .print-budget-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+          .print-budget-totals { margin-top: 14px; text-align: right; font-size: 12px; }
+          .print-budget-totals p { margin: 3px 0; }
+          .print-budget-sign { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+          .print-budget-sign p { font-size: 12px; margin: 0 0 30px; }
+          .print-budget-sign div > div { border-top: 1px solid #334155; height: 1px; }
+          @page { size: A4; margin: 12mm; }
+        }
+      `}</style>
 
       {/* ── MODAL: MOTIVO ── */}
       {reasonModal && (

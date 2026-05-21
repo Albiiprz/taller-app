@@ -27,6 +27,7 @@ export type OtItem = {
   appointmentEnd?: string | null;
   appointmentWorkType?: string | null;
   appointmentNotes?: string | null;
+  appointmentId?: string | null;
   technicianName?: string | null;
   prio: OtPriority;
   stage: OtStatus;
