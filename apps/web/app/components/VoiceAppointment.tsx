@@ -160,15 +160,19 @@ export default function VoiceAppointment({ className = "" }: Props) {
     const w = window as any;
     const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SR) { setError("Tu navegador no soporta reconocimiento de voz."); return; }
-    const r = new SR();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r: any = new SR();
     r.lang = "es-ES";
     r.continuous = false;
     r.interimResults = true;
-    r.onresult = (e) => {
-      const t = Array.from(e.results).map((res) => res[0].transcript).join(" ");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    r.onresult = (e: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const t = Array.from(e.results).map((res: any) => res[0].transcript).join(" ");
       setTranscript(t);
     };
-    r.onerror = (e) => setError(`Error de micrófono: ${e.error}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    r.onerror = (e: any) => setError(`Error de micrófono: ${e.error}`);
     r.onend = () => {
       setTranscript((t) => {
         if (t.trim().length > 3) {
