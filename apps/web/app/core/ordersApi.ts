@@ -666,7 +666,7 @@ export type AvailabilityDayDetail = {
 };
 
 export type AppointmentCreateInput = {
-  client: { name: string; phone: string; email?: string; type?: string };
+  client: { name: string; phone: string; email?: string; company?: string; type?: string };
   vehicle?: { plate?: string; vin?: string; model?: string; notes?: string };
   technicianId: string;
   startAt: string;
