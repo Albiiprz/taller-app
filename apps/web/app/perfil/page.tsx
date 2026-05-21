@@ -149,10 +149,14 @@ export default function PerfilPage() {
   }
 
   async function enablePush() {
-    if (!pushReady) return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      alert("Este navegador no soporta notificaciones push. Prueba en Chrome/Edge y mejor como app instalada.");
+      return;
+    }
     try {
       setPushBusy(true);
       const reg = await navigator.serviceWorker.ready;
+      setPushReady(true);
       const existing = await reg.pushManager.getSubscription();
       if (existing) {
         await subscribePushApi(existing);
@@ -160,9 +164,10 @@ export default function PerfilPage() {
         return;
       }
       const publicKey = await getPushPublicKey();
+      const applicationServerKey = base64ToUint8Array(publicKey) as unknown as BufferSource;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: base64ToUint8Array(publicKey),
+        applicationServerKey,
       });
       await subscribePushApi(sub);
       setPushEnabled(true);
@@ -300,43 +305,46 @@ export default function PerfilPage() {
             </div>
           ) : null}
 
-          {pushReady ? (
-            <div className="mt-4 rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-extrabold text-slate-900">Notificaciones en móvil</p>
-              <p className="mt-1 text-xs font-semibold text-slate-600">
-                Estado: {pushEnabled ? "activadas" : "desactivadas"}
+          <div className="mt-4 rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-extrabold text-slate-900">Notificaciones en móvil</p>
+            <p className="mt-1 text-xs font-semibold text-slate-600">
+              Estado: {pushEnabled ? "activadas" : "desactivadas"}
+            </p>
+            {!pushReady ? (
+              <p className="mt-1 text-xs font-semibold text-amber-700">
+                Este navegador/sesión todavía no permite push. Abre la app instalada (A2HS) o Chrome/Edge actualizado.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {pushEnabled ? (
-                  <button
-                    type="button"
-                    onClick={() => void disablePush()}
-                    disabled={pushBusy}
-                    className="btn-tap rounded-2xl border-2 border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 disabled:opacity-40"
-                  >
-                    Desactivar
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void enablePush()}
-                    disabled={pushBusy}
-                    className="btn-tap rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white disabled:opacity-40"
-                  >
-                    Activar notificaciones
-                  </button>
-                )}
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {pushEnabled ? (
                 <button
                   type="button"
-                  onClick={() => void sendTestPush()}
-                  disabled={pushBusy || !pushEnabled}
-                  className="btn-tap rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800 disabled:opacity-40"
+                  onClick={() => void disablePush()}
+                  disabled={pushBusy}
+                  className="btn-tap rounded-2xl border-2 border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 disabled:opacity-40"
                 >
-                  Probar notificación
+                  Desactivar
                 </button>
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void enablePush()}
+                  disabled={pushBusy}
+                  className="btn-tap rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white disabled:opacity-40"
+                >
+                  Activar notificaciones
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => void sendTestPush()}
+                disabled={pushBusy || !pushEnabled}
+                className="btn-tap rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800 disabled:opacity-40"
+              >
+                Probar notificación
+              </button>
             </div>
-          ) : null}
+          </div>
         </section>
       )}
 
