@@ -668,7 +668,12 @@ export class SchedulingService {
     if (currentDetail.status === 'ACTIVE' && !hasSchedule) {
       throw new BadRequestException('Una cita activa debe tener técnico y horario');
     }
-    if (hasSchedule && nextStart && nextEnd && nextTechId) {
+    const scheduleChanged =
+      (input.technicianId !== undefined && String(input.technicianId) !== String(currentDetail.technician_id ?? '')) ||
+      input.startAt !== undefined ||
+      input.endAt !== undefined ||
+      input.durationMinutes !== undefined;
+    if (hasSchedule && scheduleChanged && nextStart && nextEnd && nextTechId) {
       this.validateAppointmentRange(nextStart, nextEnd);
       const available = await this.isTechnicianAvailable(nextTechId, nextStart, nextEnd, apptId);
       if (!available) throw new BadRequestException('El técnico no está disponible para reprogramar');
