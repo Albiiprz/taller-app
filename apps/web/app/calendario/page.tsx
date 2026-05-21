@@ -37,6 +37,16 @@ type UiSummaryEvent = CalendarSummaryItem["blocks"][number] & {
   timeLabel: string;
 };
 
+const PREFERRED_TECH_ORDER = ["tecnico", "alberto", "daniel", "miguel", "victor", "josete"];
+
+function normalizeName(v: string) {
+  return v
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
 const EMPLOYEE_COLORS = [
   { soft: "#eff6ff", solid: "#2563eb", text: "#1e3a8a" },
   { soft: "#ecfdf5", solid: "#059669", text: "#065f46" },
@@ -237,7 +247,7 @@ export default function CalendarioPage() {
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [pane, setPane] = useState<CalendarPane>("summary");
-  const [summaryView, setSummaryView] = useState<SummaryView>("day");
+  const [summaryView, setSummaryView] = useState<SummaryView>("week");
   const [activeEvent, setActiveEvent] = useState<UiSummaryEvent | null>(null);
 
   const [blockTech, setBlockTech] = useState("");
@@ -540,6 +550,21 @@ export default function CalendarioPage() {
     };
   }, [items]);
 
+  const orderedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const aName = normalizeName(a.name);
+      const bName = normalizeName(b.name);
+      const aRank = PREFERRED_TECH_ORDER.findIndex((name) => aName.includes(name));
+      const bRank = PREFERRED_TECH_ORDER.findIndex((name) => bName.includes(name));
+      if (aRank !== -1 || bRank !== -1) {
+        if (aRank === -1) return 1;
+        if (bRank === -1) return -1;
+        if (aRank !== bRank) return aRank - bRank;
+      }
+      return aName.localeCompare(bName, "es");
+    });
+  }, [items]);
+
   const dayGrid = useMemo(() => {
     return Array.from({ length: DAY_ROWS }, (_, index) => {
       const minutes = DAY_START_MINUTES + index * DAY_STEP_MINUTES;
@@ -554,7 +579,7 @@ export default function CalendarioPage() {
   }, []);
 
   const summaryRows = useMemo(() => {
-    return items.map((tech, index) => {
+    return orderedItems.map((tech, index) => {
       const color = getEmployeeColor(index);
       const blocks = tech.blocks
         .filter((block) => block.isActive)
@@ -580,10 +605,10 @@ export default function CalendarioPage() {
         .filter((block): block is NonNullable<typeof block> => block !== null);
       return { ...tech, color, blocks };
     });
-  }, [items]);
+  }, [orderedItems]);
 
   const summaryEvents = useMemo<UiSummaryEvent[]>(() => {
-    return items.flatMap((tech, index) => {
+    return orderedItems.flatMap((tech, index) => {
       const color = getEmployeeColor(index);
       return tech.blocks
         .filter((block) => block.isActive)
@@ -620,7 +645,7 @@ export default function CalendarioPage() {
           return events;
         });
     });
-  }, [items]);
+  }, [orderedItems]);
 
   const weekGrid = useMemo(() => {
     const start = startOfWeekYmd(selectedDay);
@@ -707,7 +732,7 @@ export default function CalendarioPage() {
       color: ReturnType<typeof getEmployeeColor>;
     }>>();
 
-    items.forEach((tech, index) => {
+    orderedItems.forEach((tech, index) => {
       const color = getEmployeeColor(index);
       tech.blocks
         .filter((block) => block.isActive && block.type !== "APPOINTMENT")
@@ -753,7 +778,7 @@ export default function CalendarioPage() {
         blocks: blocksByDay.get(ymd) ?? [],
       };
     });
-  }, [items, selectedMonth]);
+  }, [orderedItems, selectedMonth]);
 
   function renderHoverCard(event: UiSummaryEvent) {
     return (
@@ -1008,7 +1033,7 @@ export default function CalendarioPage() {
           <div className="mx-auto w-full max-w-6xl px-4 pt-4">
             <div className="grid grid-cols-3 gap-3">
               <button
-                onClick={() => { setPane("summary"); setSummaryView("day"); }}
+                onClick={() => { setPane("summary"); setSummaryView("week"); }}
                 className={`btn-tap rounded-2xl p-4 text-left text-white transition-opacity ${pane === "summary" ? "bg-[#0b2a4a]" : "bg-[#0b2a4a]/70"}`}
               >
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] opacity-70">Citas</p>

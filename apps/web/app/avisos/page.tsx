@@ -25,6 +25,24 @@ function toneIconClass(tone: AlertTone) {
   return "text-blue-700";
 }
 
+const DISMISSED_ALERTS_KEY = "taller_dismissed_alerts_v1";
+
+function readDismissedAlerts(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DISMISSED_ALERTS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDismissedAlerts(ids: string[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify(ids.slice(-300)));
+}
+
 export default function AvisosPage() {
   const { activeUser } = useSession();
   const activeRole = (activeUser?.roles?.[0] ?? "Oficina");
@@ -32,6 +50,8 @@ export default function AvisosPage() {
   const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+  const canManageAlerts = activeRole === "Administración" || activeRole === "Oficina";
 
   async function load() {
     setError("");
@@ -47,12 +67,16 @@ export default function AvisosPage() {
   }
 
   useEffect(() => {
+    setDismissedAlerts(readDismissedAlerts());
+    const onStorage = () => setDismissedAlerts(readDismissedAlerts());
+    window.addEventListener("storage", onStorage);
     void load();
     const onFocus = () => void load();
     const onVisibility = () => document.visibilityState === "visible" && void load();
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      window.removeEventListener("storage", onStorage);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
@@ -68,7 +92,29 @@ export default function AvisosPage() {
     [orders, activeRole, today],
   );
   const helpRequests = useMemo(() => listOpenHelpRequests(), [orders, products]);
-  const alerts = useMemo(() => buildAlerts(visibleOrders, products, helpRequests), [visibleOrders, products, helpRequests]);
+  const alerts = useMemo(() => {
+    const baseAlerts = buildAlerts(visibleOrders, products, helpRequests);
+    const overduePendings = visibleOrders.filter((o) => o.stage === "PROGRAMADA" && o.scheduledStart && new Date(o.scheduledStart).getTime() < Date.now());
+    if (overduePendings.length > 0) {
+      baseAlerts.unshift({
+        id: "overdue-pending",
+        title: `Pendientes con hora pasada: ${overduePendings.length}`,
+        detail: overduePendings
+          .slice(0, 4)
+          .map((o) => `${o.clientName || o.title} (${new Date(o.scheduledStart as string).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })})`)
+          .join(" · "),
+        tone: "warn",
+        href: "/taller",
+      });
+    }
+    return baseAlerts.filter((a) => !dismissedAlerts.includes(a.id));
+  }, [visibleOrders, products, helpRequests, dismissedAlerts]);
+
+  function dismissAlert(id: string) {
+    const next = Array.from(new Set([...dismissedAlerts, id]));
+    setDismissedAlerts(next);
+    saveDismissedAlerts(next);
+  }
 
   return (
     <main className="min-h-screen app-bg module-alert px-4 pt-4 mobile-nav-safe">
@@ -102,10 +148,25 @@ export default function AvisosPage() {
           {alerts.map((a) => {
             const card = (
               <article className={`rounded-xl border-2 p-4 ${toneCardClass(a.tone)}`}>
-                <p className="inline-flex items-center gap-2 text-sm font-extrabold">
-                  <Icon name="alert" className={`h-4 w-4 ${toneIconClass(a.tone)}`} />
-                  {a.title}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="inline-flex items-center gap-2 text-sm font-extrabold">
+                    <Icon name="alert" className={`h-4 w-4 ${toneIconClass(a.tone)}`} />
+                    {a.title}
+                  </p>
+                  {canManageAlerts ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dismissAlert(a.id);
+                      }}
+                      className="btn-tap rounded-lg border border-slate-300 bg-white/70 px-2 py-1 text-[10px] font-extrabold text-slate-700"
+                    >
+                      Borrar
+                    </button>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-sm font-semibold opacity-90">{a.detail}</p>
               </article>
             );

@@ -71,6 +71,18 @@ function isDelayStage(item: OtItem) {
   return item.stage === "PROGRAMADA" || item.stage === "PRESUPUESTO_ENVIADO";
 }
 
+function formatTimeShort(iso?: string | null): string {
+  if (!iso) return "Sin hora";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Sin hora";
+  return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+}
+
+function isOverduePending(item: OtItem): boolean {
+  if (item.stage !== "PROGRAMADA" || !item.scheduledStart) return false;
+  return new Date(item.scheduledStart).getTime() < Date.now();
+}
+
 function Section({ title, text, children, tone = "content" }: { title: string; text?: string; children: React.ReactNode; tone?: "action" | "status" | "content" | "history" }) {
   const cls = tone === "action" ? "surface-action" : tone === "status" ? "surface-status" : tone === "history" ? "surface-history" : "surface-content";
   return (
@@ -155,7 +167,12 @@ function MoveCard({
   onMoved: (id: string, next: OtStatus) => Promise<void>;
   busy: boolean;
 }) {
-  const options = [item.stage, ...getAllowedNextStatuses(item.stage).filter((stage) => stage !== item.stage && canRoleMoveOt(currentRole, item.stage, stage))];
+  const forceRoles: Role[] = ["Administración", "Oficina", "Jefe de Taller"];
+  const canForce = forceRoles.includes(currentRole);
+  const allStatuses: OtStatus[] = ["PROGRAMADA", "RECEPCION", "DIAGNOSTICO", "PRESUPUESTO_ENVIADO", "APROBADO", "REPARACION", "QC", "LISTO_ENTREGA", "ENTREGADO", "FACTURADO", "CERRADO"];
+  const options = canForce
+    ? [item.stage, ...allStatuses.filter((stage) => stage !== item.stage)]
+    : [item.stage, ...getAllowedNextStatuses(item.stage).filter((stage) => stage !== item.stage && canRoleMoveOt(currentRole, item.stage, stage))];
   const canMove = options.length > 1;
   const [nextStage, setNextStage] = useState<OtStatus>(() => item.stage);
 
@@ -165,6 +182,15 @@ function MoveCard({
         <div>
           <p className="text-sm font-extrabold text-slate-900">{item.clientName || item.title}</p>
           <p className="mt-1 text-sm font-semibold text-slate-700">{item.plate}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-xs font-extrabold text-slate-500">{formatTimeShort(item.scheduledStart)}</span>
+            {isOverduePending(item) ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
+                <Icon name="bell" className="h-3 w-3" />
+                Hora pasada
+              </span>
+            ) : null}
+          </div>
         </div>
         <Badge className={prioBadgeClass(item.prio)}>{item.prio}</Badge>
       </div>
@@ -266,7 +292,7 @@ function BoardSection({
   }, [items]);
 
   return (
-    <div className="-mx-2 overflow-x-auto px-2 pb-2 lg:overflow-visible">
+    <div className="-mx-1 overflow-x-auto px-1 pb-2 lg:overflow-visible">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {WORKSHOP_BOARD_COLUMNS.map((column) => {
           const rows = grouped[column.key];
@@ -402,7 +428,9 @@ function TallerPageContent() {
     if (isMoving) return;
     const current = items.find((item) => item.id === id);
     if (!current) return;
-    if (!canRoleMoveOt(currentRole, current.stage, nextStage)) {
+    const canStandard = canRoleMoveOt(currentRole, current.stage, nextStage);
+    const canForce = currentRole === "Administración" || currentRole === "Oficina" || currentRole === "Jefe de Taller";
+    if (!canStandard && !canForce) {
       window.alert("No puedes mover este trabajo desde aquí.");
       return;
     }
@@ -414,6 +442,7 @@ function TallerPageContent() {
         actorRole: currentRole,
         actorName: activeUserName,
         reason: `Cambio desde taller a ${statusLabel(nextStage)}`,
+        force: !canStandard,
         origin: "web",
       });
       setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
@@ -762,7 +791,7 @@ function TallerPageContent() {
         <div className="pointer-events-none absolute -top-16 right-0 h-64 w-64 rounded-full opacity-10"
           style={{ background: "radial-gradient(circle, #f59e0b 0%, transparent 70%)" }} />
 
-        <div className="relative mx-auto w-full max-w-6xl">
+      <div className="relative mx-auto w-full max-w-none">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-widest text-amber-400">Taller</p>
@@ -792,7 +821,7 @@ function TallerPageContent() {
       </div>
 
       {/* ── CONTENIDO ── */}
-      <div className="mx-auto w-full max-w-6xl px-4 pt-5">
+      <div className="mx-auto w-full max-w-none px-3 pt-5">
         {error ? <div className="mb-4 error-state">{error}</div> : null}
 
         {loading ? (

@@ -662,11 +662,14 @@ export default function DetalleOT() {
   }
 
   const allowedNextStages = ot
-    ? (["PROGRAMADA", "PRE_ENTRADA", "RECEPCION", "DIAGNOSTICO", "PRESUPUESTO_ENVIADO", "APROBADO", "REPARACION", "QC", "LISTO_ENTREGA", "ENTREGADO", "FACTURADO", "CERRADO"] as OtStatus[])
+    ? (["PROGRAMADA", "RECEPCION", "DIAGNOSTICO", "PRESUPUESTO_ENVIADO", "APROBADO", "REPARACION", "QC", "LISTO_ENTREGA", "ENTREGADO", "FACTURADO", "CERRADO"] as OtStatus[])
       .filter((s) => s !== ot.stage && (canRoleMoveOt(role as Role, ot.stage, s) || role === "Administración" || role === "Oficina" || role === "Jefe de Taller"))
     : [];
 
   const TABS: Array<{ key: Tab; label: string; count?: number }> = [
+    { key: "fotos", label: "Fotos", count: photos.length > 0 ? photos.length : undefined },
+    { key: "material", label: "Material" },
+    { key: "notas", label: "Notas", count: notes.length > 0 ? notes.length : undefined },
     { key: "entrada", label: "Entrada" },
     { key: "historial", label: "Historial", count: timeline.length > 0 ? timeline.length : undefined },
     { key: "mas", label: "Presupuesto" },
@@ -718,6 +721,9 @@ export default function DetalleOT() {
             <p className="mt-2 text-base font-semibold text-white/70 leading-snug">
               {ot.plate || "Sin matrícula"}{ot.vehicleModel ? ` · ${ot.vehicleModel}` : ""}
             </p>
+            <p className="mt-1 text-sm font-semibold text-white/65 leading-snug">
+              {ot.appointmentStart ? `${formatDate(ot.appointmentStart)} · ` : ""}{ot.clientPhone || "Sin teléfono"} · {ot.appointmentWorkType || ot.title}
+            </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${statusBadgeClass(ot.stage)}`}>
@@ -729,6 +735,14 @@ export default function DetalleOT() {
               {ot.prio === "Alta" && (
                 <span className="rounded-full bg-amber-500 px-3 py-1.5 text-xs font-black text-white">ALTA</span>
               )}
+              {ot.appointmentId ? (
+                <button
+                  onClick={() => setEditingAppointment((v) => !v)}
+                  className="btn-tap rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-extrabold text-white"
+                >
+                  {editingAppointment ? "Cancelar edición" : "Editar cita"}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -797,19 +811,9 @@ export default function DetalleOT() {
           </div>
         ) : (
           <>
-            <section className="mt-1 rounded-3xl border-2 border-slate-200 bg-white p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Datos de cita</p>
-                {ot.appointmentId ? (
-                  <button
-                    onClick={() => setEditingAppointment((v) => !v)}
-                    className="btn-tap rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700"
-                  >
-                    {editingAppointment ? "Cancelar edición" : "Editar cita"}
-                  </button>
-                ) : null}
-              </div>
-              {editingAppointment ? (
+            {editingAppointment ? (
+              <section className="mt-1 rounded-3xl border-2 border-slate-200 bg-white p-5">
+                <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Editar cita</p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editClientName} onChange={(e) => setEditClientName(e.target.value)} placeholder="Cliente / empresa" />
                   <input className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Teléfono" />
@@ -824,18 +828,8 @@ export default function DetalleOT() {
                     Guardar cambios de cita
                   </button>
                 </div>
-              ) : (
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <p className="text-sm font-semibold text-slate-700"><b>Fecha/hora:</b> {ot.appointmentStart ? formatDate(ot.appointmentStart) : "Sin cita asociada"}</p>
-                  <p className="text-sm font-semibold text-slate-700"><b>Técnico:</b> {ot.technicianName || "Sin asignar"}</p>
-                  <p className="text-sm font-semibold text-slate-700"><b>Cliente/Empresa:</b> {ot.clientName || "-"}</p>
-                  <p className="text-sm font-semibold text-slate-700"><b>Teléfono:</b> {ot.clientPhone || "-"}</p>
-                  <p className="text-sm font-semibold text-slate-700"><b>Email:</b> {ot.clientEmail || "-"}</p>
-                  <p className="text-sm font-semibold text-slate-700"><b>Matrícula:</b> {ot.plate || "-"}</p>
-                  <p className="text-sm font-semibold text-slate-700 sm:col-span-2"><b>Motivo:</b> {ot.appointmentWorkType || ot.title || "-"}</p>
-                </div>
-              )}
-            </section>
+              </section>
+            ) : null}
 
             {/* ── CRONÓMETRO + EMPEZAR ── */}
             <section className="mt-4 rounded-3xl border-2 border-slate-200 bg-white p-5">

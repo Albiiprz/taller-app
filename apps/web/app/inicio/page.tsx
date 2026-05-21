@@ -46,6 +46,13 @@ function todayLong(): string {
   });
 }
 
+function formatDateBadge(iso?: string | null): string {
+  if (!iso) return "Sin fecha";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Sin fecha";
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+}
+
 function roleModuleClass(role: Role) {
   if (role === "Técnico" || role === "Jefe de Taller") return "module-tech";
   if (role === "Oficina") return "module-office";
@@ -173,11 +180,16 @@ function CarScroll({ rows, emptyText }: { rows: OtItem[]; emptyText: string }) {
             className={`btn-tap relative shrink-0 w-40 overflow-hidden rounded-2xl border-2 p-4 ${cardBg}`}
           >
             <span className={`absolute inset-x-0 top-0 h-1 ${stripe}`} />
-            <p className="mt-1 text-xl font-black tracking-tight text-slate-900 leading-none">{ot.plate}</p>
-            <p className="mt-1.5 text-xs font-semibold text-slate-500 line-clamp-2 leading-snug">{ot.title}</p>
+            <p className="mt-1 text-sm font-black tracking-tight text-slate-900 leading-tight line-clamp-2">{ot.clientName || ot.title}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">
+              {ot.plate || "Sin matrícula"}{ot.vehicleModel ? ` · ${ot.vehicleModel}` : ""}
+            </p>
             <span className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold ${statusBadgeClass(ot.stage)}`}>
               {statusLabel(ot.stage)}
             </span>
+            <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
+              {formatDateBadge(ot.scheduledStart)}
+            </p>
           </Link>
         );
       })}
