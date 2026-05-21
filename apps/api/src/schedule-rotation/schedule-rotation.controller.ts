@@ -1,4 +1,4 @@
-import { Controller, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -12,6 +12,12 @@ function ok(data: unknown) {
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ScheduleRotationController {
   constructor(private readonly scheduling: SchedulingService) {}
+
+  @Get('current-week')
+  async currentWeek() {
+    const data = await this.scheduling.getCurrentWeekPattern();
+    return ok(data);
+  }
 
   // Hardcoded "taller" template (Semana A/B) as requested.
   @Post('malu/apply')

@@ -1381,6 +1381,13 @@ export class SchedulingService {
     return parity === weekAParity ? 'A' : 'B';
   }
 
+  async getCurrentWeekPattern(): Promise<{ week: 'A' | 'B'; isoWeek: number; label: string }> {
+    const today = new Date();
+    const isoWeek = this.getIsoWeekNumber(today);
+    const pattern = await this.getWeekPatternForDate(today);
+    return { week: pattern, isoWeek, label: `Semana ${pattern} (semana ISO ${isoWeek})` };
+  }
+
   async applyMaluWeekRotation() {
     // Week A is pinned the first time we apply the template.
     // Re-applying should refresh rules/users without flipping the A/B mapping.

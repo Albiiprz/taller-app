@@ -1006,6 +1006,13 @@ export async function createTechnicianScheduleRule(input: {
   return unwrap(raw);
 }
 
+export async function getCurrentWeekPattern(): Promise<{ week: 'A' | 'B'; isoWeek: number; label: string }> {
+  const raw = await apiFetch<{ week: 'A' | 'B'; isoWeek: number; label: string } | ApiWrapped<{ week: 'A' | 'B'; isoWeek: number; label: string }>>(
+    "/schedule-rotation/current-week",
+  );
+  return unwrap(raw);
+}
+
 export async function applyMaluScheduleRotation(): Promise<{ ok: boolean; weekAParity: string; note: string }> {
   const raw = await apiFetch<
     { ok: boolean; weekAParity: string; note: string } | ApiWrapped<{ ok: boolean; weekAParity: string; note: string }>

@@ -13,6 +13,7 @@ import { getReminderTargetMonday, markReminderDone } from "../core/weeklySchedul
 import {
   cancelAppointment,
   applyMaluScheduleRotation,
+  getCurrentWeekPattern,
   createTechnicianScheduleRule,
   createTechnicianTimeBlock,
   deleteTechnicianScheduleRule,
@@ -267,6 +268,7 @@ export default function CalendarioPage() {
   const [replaceWeekRules, setReplaceWeekRules] = useState(true);
   const [savingWeekRules, setSavingWeekRules] = useState(false);
   const [applyingRotation, setApplyingRotation] = useState(false);
+  const [currentWeek, setCurrentWeek] = useState<{ week: 'A' | 'B'; isoWeek: number } | null>(null);
   const { pending, scheduleAction, undoAction } = useUndoAction();
   const [nowTs, setNowTs] = useState(Date.now());
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -377,6 +379,10 @@ export default function CalendarioPage() {
     const t = window.setInterval(() => setNowTs(Date.now()), 250);
     return () => window.clearInterval(t);
   }, [pending.length]);
+
+  useEffect(() => {
+    getCurrentWeekPattern().then(setCurrentWeek).catch(() => null);
+  }, []);
 
   async function createBlock() {
     if (!canEdit) {
@@ -1237,6 +1243,17 @@ export default function CalendarioPage() {
                   <h2 className="text-base font-extrabold text-slate-900">Horarios alternos (Semana A/B)</h2>
                   <InfoHint text="Crea los turnos en dos semanas y la app alterna automáticamente." />
                 </div>
+                {currentWeek && (
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-black text-white ${currentWeek.week === 'A' ? 'bg-blue-600' : 'bg-violet-600'}`}>
+                      {currentWeek.week}
+                    </span>
+                    <span className="text-sm font-extrabold text-slate-700">
+                      Esta semana es <span className={currentWeek.week === 'A' ? 'text-blue-700' : 'text-violet-700'}>Semana {currentWeek.week}</span>
+                      <span className="ml-1 text-xs font-semibold text-slate-400">(ISO {currentWeek.isoWeek})</span>
+                    </span>
+                  </div>
+                )}
                 <p className="mt-2 text-sm font-semibold text-slate-600">
                   Carga de una vez los horarios que me has pasado (incluye crear a Josete si no existe).
                 </p>
