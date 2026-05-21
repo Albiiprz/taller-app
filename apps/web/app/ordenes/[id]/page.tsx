@@ -1263,8 +1263,17 @@ export default function DetalleOT() {
                 </button>
                 <article className="print-budget-a4 hidden print:block">
                   <header className="print-budget-head">
-                    <h1>Talleres MALU</h1>
-                    <p>Presupuesto de reparación</p>
+                    <div className="print-budget-brand">
+                      <img src="/brand/talleres-malu-logo-blanco.png" alt="Talleres MALU" />
+                      <div>
+                        <h1>Talleres MALU</h1>
+                        <p>Presupuesto de reparación</p>
+                      </div>
+                    </div>
+                    <div className="print-budget-contact">
+                      <p>Polígono Ind. Torrehierro, C/ Marconi 393B, 45600 Talavera de la Reina (Toledo)</p>
+                      <p>+34 925 826 518 · contacto@talleresmalu.es · NIF B45329067</p>
+                    </div>
                   </header>
                   <section className="print-budget-meta">
                     <p><b>OT:</b> #{ot.id}</p>
@@ -1307,6 +1316,9 @@ export default function DetalleOT() {
                     <div><p>Firma taller</p><div /></div>
                     <div><p>Firma cliente (aceptación)</p><div /></div>
                   </footer>
+                  <p className="print-budget-legal">
+                    Validez del presupuesto: 15 días. Los precios incluyen mano de obra y materiales indicados, salvo error tipográfico u omisiones.
+                  </p>
                 </article>
               </section>
             )}
@@ -1318,17 +1330,23 @@ export default function DetalleOT() {
         @media print {
           .mobile-nav-safe > * { display: none !important; }
           .print-budget-a4 { display: block !important; margin: 0; color: #0f172a; font-family: Arial, sans-serif; }
-          .print-budget-head { border-bottom: 2px solid #0b2a4a; padding-bottom: 10px; margin-bottom: 14px; }
-          .print-budget-head h1 { margin: 0; font-size: 28px; color: #0b2a4a; }
-          .print-budget-head p { margin: 2px 0 0; font-size: 13px; color: #475569; }
+          .print-budget-head { margin-bottom: 16px; background: linear-gradient(135deg, #0b2a4a 0%, #173a60 100%); color: #fff; border-radius: 12px; padding: 14px 16px; }
+          .print-budget-brand { display: flex; align-items: center; gap: 12px; }
+          .print-budget-brand img { width: 64px; height: 64px; object-fit: contain; }
+          .print-budget-head h1 { margin: 0; font-size: 24px; color: #fff; letter-spacing: 0.02em; }
+          .print-budget-head p { margin: 2px 0 0; font-size: 13px; color: #dbeafe; }
+          .print-budget-contact { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.25); padding-top: 8px; font-size: 11px; color: #e2e8f0; }
+          .print-budget-contact p { margin: 2px 0; }
           .print-budget-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin-bottom: 14px; font-size: 12px; }
           .print-budget-table { width: 100%; border-collapse: collapse; font-size: 12px; }
           .print-budget-table th, .print-budget-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+          .print-budget-table th { background: #eef2ff; color: #1e293b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
           .print-budget-totals { margin-top: 14px; text-align: right; font-size: 12px; }
           .print-budget-totals p { margin: 3px 0; }
           .print-budget-sign { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
           .print-budget-sign p { font-size: 12px; margin: 0 0 30px; }
           .print-budget-sign div > div { border-top: 1px solid #334155; height: 1px; }
+          .print-budget-legal { margin-top: 20px; font-size: 10px; color: #64748b; text-align: center; }
           @page { size: A4; margin: 12mm; }
         }
       `}</style>
