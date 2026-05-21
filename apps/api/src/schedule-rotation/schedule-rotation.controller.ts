@@ -19,6 +19,13 @@ export class ScheduleRotationController {
     return ok(data);
   }
 
+  @Post('flip-week')
+  @Roles('ADMIN')
+  async flipWeek() {
+    const data = await this.scheduling.flipWeekPattern();
+    return ok(data);
+  }
+
   // Hardcoded "taller" template (Semana A/B) as requested.
   @Post('malu/apply')
   @Roles('ADMIN')

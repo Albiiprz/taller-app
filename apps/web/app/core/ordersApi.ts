@@ -1013,6 +1013,14 @@ export async function getCurrentWeekPattern(): Promise<{ week: 'A' | 'B'; isoWee
   return unwrap(raw);
 }
 
+export async function flipWeekPattern(): Promise<{ week: 'A' | 'B'; isoWeek: number; label: string }> {
+  const raw = await apiFetch<{ week: 'A' | 'B'; isoWeek: number; label: string } | ApiWrapped<{ week: 'A' | 'B'; isoWeek: number; label: string }>>(
+    "/schedule-rotation/flip-week",
+    { method: "POST" },
+  );
+  return unwrap(raw);
+}
+
 export async function applyMaluScheduleRotation(): Promise<{ ok: boolean; weekAParity: string; note: string }> {
   const raw = await apiFetch<
     { ok: boolean; weekAParity: string; note: string } | ApiWrapped<{ ok: boolean; weekAParity: string; note: string }>

@@ -14,6 +14,7 @@ import {
   cancelAppointment,
   applyMaluScheduleRotation,
   getCurrentWeekPattern,
+  flipWeekPattern,
   createTechnicianScheduleRule,
   createTechnicianTimeBlock,
   deleteTechnicianScheduleRule,
@@ -1244,14 +1245,26 @@ export default function CalendarioPage() {
                   <InfoHint text="Crea los turnos en dos semanas y la app alterna automáticamente." />
                 </div>
                 {currentWeek && (
-                  <div className="mt-2 inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2">
-                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-black text-white ${currentWeek.week === 'A' ? 'bg-blue-600' : 'bg-violet-600'}`}>
+                  <div className="mt-2 flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black text-white ${currentWeek.week === 'A' ? 'bg-blue-600' : 'bg-violet-600'}`}>
                       {currentWeek.week}
                     </span>
                     <span className="text-sm font-extrabold text-slate-700">
                       Esta semana es <span className={currentWeek.week === 'A' ? 'text-blue-700' : 'text-violet-700'}>Semana {currentWeek.week}</span>
                       <span className="ml-1 text-xs font-semibold text-slate-400">(ISO {currentWeek.isoWeek})</span>
                     </span>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="btn-tap ml-auto shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-extrabold text-slate-600"
+                        onClick={async () => {
+                          const result = await flipWeekPattern();
+                          setCurrentWeek(result);
+                        }}
+                      >
+                        Cambiar a {currentWeek.week === 'A' ? 'B' : 'A'}
+                      </button>
+                    )}
                   </div>
                 )}
                 <p className="mt-2 text-sm font-semibold text-slate-600">

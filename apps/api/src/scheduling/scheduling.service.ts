@@ -1388,6 +1388,26 @@ export class SchedulingService {
     return { week: pattern, isoWeek, label: `Semana ${pattern} (semana ISO ${isoWeek})` };
   }
 
+  async flipWeekPattern(): Promise<{ week: 'A' | 'B'; isoWeek: number; label: string }> {
+    const today = new Date();
+    const isoWeek = this.getIsoWeekNumber(today);
+    const parity: 'EVEN' | 'ODD' = isoWeek % 2 === 0 ? 'EVEN' : 'ODD';
+    // Flip: make current week the opposite of what it is now
+    const current = await this.getWeekPatternForDate(today);
+    // If current week is A and we want it to be B, week A must be the opposite parity
+    const newWeekAParity: 'EVEN' | 'ODD' = current === 'A'
+      ? (parity === 'EVEN' ? 'ODD' : 'EVEN')
+      : parity;
+    await this.db.query(
+      `INSERT INTO app_settings (key, value)
+       VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [this.rotationSettingKey, newWeekAParity],
+    );
+    const newPattern = await this.getWeekPatternForDate(today);
+    return { week: newPattern, isoWeek, label: `Semana ${newPattern} (semana ISO ${isoWeek})` };
+  }
+
   async applyMaluWeekRotation() {
     // Week A is pinned the first time we apply the template.
     // Re-applying should refresh rules/users without flipping the A/B mapping.
