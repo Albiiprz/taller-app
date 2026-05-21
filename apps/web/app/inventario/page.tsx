@@ -20,7 +20,7 @@ import { semaphoreBadgeClass, stockSemaphore, semaphorePlainLabel } from "../cor
 
 type Unit = "ud" | "l" | "m";
 type ScanMode = "edit_or_create" | "lookup";
-type InventoryView = "scan" | "new" | "moves" | "low";
+type InventoryView = "scan" | "new" | "moves" | "low" | "lista";
 
 type ProductQuickModal = {
   product: InventoryProduct;
@@ -213,7 +213,7 @@ function InventarioPageContent() {
 
   useEffect(() => {
     const view = searchParams.get("view");
-    if (view === "scan" || view === "new" || view === "moves" || view === "low") {
+    if (view === "scan" || view === "new" || view === "moves" || view === "low" || view === "lista") {
       setActiveView(view);
     }
   }, [searchParams]);
@@ -553,7 +553,8 @@ function InventarioPageContent() {
               <div className="flex flex-wrap gap-2">
                 {([
                   { key: "scan" as const, label: "Escanear" },
-                  { key: "new" as const, label: "Producto" },
+                  { key: "lista" as const, label: "Productos" },
+                  { key: "new" as const, label: "Nuevo" },
                   { key: "moves" as const, label: "Movimientos" },
                   { key: "low" as const, label: "Stock bajo" },
                 ] as const).map((t) => (
@@ -823,6 +824,45 @@ function InventarioPageContent() {
                   <p className="mt-1 text-xs font-semibold text-slate-500">{fmtWhen(mv.createdAt)}</p>
                 </div>
               ))
+            )}
+          </div>
+        </section>
+      )}
+
+      {activeView === "lista" && (
+        <section className="mx-auto mt-4 w-full max-w-6xl px-4">
+          <div className="panel p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-extrabold text-slate-900">Todos los productos ({products.length})</h2>
+            </div>
+            {products.length === 0 ? (
+              <p className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm font-semibold text-slate-500">
+                No hay productos. Añade el primero desde &quot;Nuevo&quot;.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {products.map((p) => {
+                  const sem = stockSemaphore(p.stock, p.minStock);
+                  return (
+                    <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                      <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${semaphoreBadgeClass(sem)}`}>
+                        {p.stock}{p.unit}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-extrabold text-slate-900">{p.name}</p>
+                        <p className="truncate text-xs font-semibold text-slate-500">{p.id}{p.location ? ` · ${p.location}` : ""}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-tap shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-extrabold text-slate-700"
+                        onClick={() => loadEditFormFromProduct(p)}
+                      >
+                        Editar
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
         </section>

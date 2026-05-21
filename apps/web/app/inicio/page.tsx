@@ -159,6 +159,25 @@ function SecondaryGrid({ actions }: { actions: ActionTile[] }) {
 
 // ── Scroll horizontal de coches ───────────────────────────────────────────────
 
+function otTime(ot: OtItem): string {
+  const iso = ot.scheduledStart || ot.appointmentStart;
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
+}
+
+function sortByTime(rows: OtItem[]): OtItem[] {
+  return [...rows].sort((a, b) => {
+    const ta = a.scheduledStart || a.appointmentStart || "";
+    const tb = b.scheduledStart || b.appointmentStart || "";
+    if (!ta && !tb) return 0;
+    if (!ta) return 1;
+    if (!tb) return -1;
+    return ta.localeCompare(tb);
+  });
+}
+
 function CarScroll({ rows, emptyText }: { rows: OtItem[]; emptyText: string }) {
   if (rows.length === 0) {
     return (
@@ -167,29 +186,31 @@ function CarScroll({ rows, emptyText }: { rows: OtItem[]; emptyText: string }) {
       </div>
     );
   }
+  const sorted = sortByTime(rows);
   return (
     <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-      {rows.map((ot) => {
+      {sorted.map((ot) => {
         const isUrgent = ot.prio === "Urgente";
         const isReady = ot.stage === "LISTO_ENTREGA" || ot.stage === "ENTREGADO";
         const isWorking = ot.stage === "REPARACION" || ot.stage === "QC";
         const cardBg = isUrgent ? "bg-rose-50 border-rose-300" : isReady ? "bg-emerald-50 border-emerald-300" : isWorking ? "bg-blue-50 border-blue-200" : "bg-white border-slate-200";
         const stripe = isUrgent ? "bg-rose-500" : isReady ? "bg-emerald-500" : isWorking ? "bg-blue-500" : "bg-slate-300";
+        const time = otTime(ot);
         return (
           <Link key={ot.id} href={`/ordenes/${ot.id}`}
             className={`btn-tap relative shrink-0 w-40 overflow-hidden rounded-2xl border-2 p-4 ${cardBg}`}
           >
             <span className={`absolute inset-x-0 top-0 h-1 ${stripe}`} />
-            <p className="mt-1 text-sm font-black tracking-tight text-slate-900 leading-tight line-clamp-2">{ot.clientName || ot.title}</p>
+            {time && (
+              <p className="mt-1 text-base font-black text-slate-900 tabular-nums">{time}</p>
+            )}
+            <p className={`${time ? "mt-0.5" : "mt-1"} text-sm font-black tracking-tight text-slate-900 leading-tight line-clamp-2`}>{ot.clientName || ot.title}</p>
             <p className="mt-1 text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">
               {ot.plate || "Sin matrícula"}{ot.vehicleModel ? ` · ${ot.vehicleModel}` : ""}
             </p>
-            <span className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold ${statusBadgeClass(ot.stage)}`}>
+            <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold ${statusBadgeClass(ot.stage)}`}>
               {statusLabel(ot.stage)}
             </span>
-            <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
-              {formatDateBadge(ot.scheduledStart)}
-            </p>
           </Link>
         );
       })}

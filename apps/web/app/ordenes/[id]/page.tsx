@@ -900,25 +900,52 @@ export default function DetalleOT() {
               </div>
             </section>
 
-            {/* ── MOVER ESTADO — inline buttons ── */}
+            {/* ── MOVER ESTADO ── */}
             {isMoveOpen && (
               <section className="mt-2 rounded-2xl border-2 border-slate-200 bg-white p-4">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500 mb-3">Mover trabajo a:</p>
+                {/* Estado actual */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="text-xs font-extrabold uppercase tracking-widest text-slate-400">Ahora:</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${statusBadgeClass(ot.stage)}`}>{statusLabel(ot.stage)}</span>
+                </div>
                 {allowedNextStages.length === 0 ? (
                   <p className="text-sm font-semibold text-slate-500">No hay movimientos disponibles con tu rol.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {allowedNextStages.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => void changeStage(s)}
-                        className="btn-tap rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-extrabold text-slate-800 hover:border-slate-400 hover:bg-white active:scale-95 transition-all"
-                      >
-                        {statusLabel(s)} →
-                      </button>
-                    ))}
-                  </div>
-                )}
+                ) : (() => {
+                  const mainStages: OtStatus[] = ["PROGRAMADA", "RECEPCION", "REPARACION", "LISTO_ENTREGA"];
+                  const extraStages: OtStatus[] = ["DIAGNOSTICO", "PRESUPUESTO_ENVIADO", "APROBADO", "QC", "ENTREGADO", "FACTURADO", "CERRADO"];
+                  const mainAllowed = allowedNextStages.filter((s) => mainStages.includes(s));
+                  const extraAllowed = allowedNextStages.filter((s) => extraStages.includes(s));
+                  return (
+                    <div className="space-y-3">
+                      {mainAllowed.length > 0 && (
+                        <div>
+                          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Estados principales</p>
+                          <div className="flex flex-wrap gap-2">
+                            {mainAllowed.map((s) => (
+                              <button key={s} onClick={() => void changeStage(s)}
+                                className="btn-tap rounded-xl bg-[#0b2a4a] px-4 py-2.5 text-sm font-extrabold text-white active:scale-95 transition-all">
+                                {statusLabel(s)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {extraAllowed.length > 0 && (
+                        <div>
+                          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Gestión</p>
+                          <div className="flex flex-wrap gap-2">
+                            {extraAllowed.map((s) => (
+                              <button key={s} onClick={() => void changeStage(s)}
+                                className="btn-tap rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-700 active:scale-95 transition-all">
+                                {statusLabel(s)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </section>
             )}
 
@@ -1258,15 +1285,12 @@ export default function DetalleOT() {
                 <article className="print-budget-a4 hidden print:block">
                   <header className="print-budget-head">
                     <div className="print-budget-brand">
-                      <img src="/brand/talleres-malu-logo-blanco.png" alt="Talleres MALU" />
-                      <div>
-                        <h1>Talleres MALU</h1>
-                        <p>Presupuesto de reparación</p>
+                      <img src="/brand/talleres-malu-logo-blanco.png" alt="Talleres MALU" className="print-budget-logo" />
+                      <div className="print-budget-head-right">
+                        <p className="print-budget-doc-title">Presupuesto</p>
+                        <p className="print-budget-contact-line">Polígono Ind. Torrehierro, C/ Marconi 393B, 45600 Talavera de la Reina (Toledo)</p>
+                        <p className="print-budget-contact-line">+34 925 826 518 · contacto@talleresmalu.es · NIF B45329067</p>
                       </div>
-                    </div>
-                    <div className="print-budget-contact">
-                      <p>Polígono Ind. Torrehierro, C/ Marconi 393B, 45600 Talavera de la Reina (Toledo)</p>
-                      <p>+34 925 826 518 · contacto@talleresmalu.es · NIF B45329067</p>
                     </div>
                   </header>
                   <section className="print-budget-meta">
@@ -1336,13 +1360,12 @@ export default function DetalleOT() {
             font-family: Arial, sans-serif;
             background: #fff;
           }
-          .print-budget-head { margin-bottom: 16px; background: linear-gradient(135deg, #0b2a4a 0%, #173a60 100%); color: #fff; border-radius: 12px; padding: 14px 16px; }
-          .print-budget-brand { display: flex; align-items: center; gap: 12px; }
-          .print-budget-brand img { width: 64px; height: 64px; object-fit: contain; }
-          .print-budget-head h1 { margin: 0; font-size: 24px; color: #fff; letter-spacing: 0.02em; }
-          .print-budget-head p { margin: 2px 0 0; font-size: 13px; color: #dbeafe; }
-          .print-budget-contact { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.25); padding-top: 8px; font-size: 11px; color: #e2e8f0; }
-          .print-budget-contact p { margin: 2px 0; }
+          .print-budget-head { margin-bottom: 18px; background: #fff; border-bottom: 3px solid #0b2a4a; padding-bottom: 14px; }
+          .print-budget-brand { display: flex; align-items: center; gap: 16px; }
+          .print-budget-logo { width: 110px; height: 56px; object-fit: contain; filter: brightness(0); }
+          .print-budget-head-right { flex: 1; }
+          .print-budget-doc-title { margin: 0 0 4px; font-size: 22px; font-weight: 900; color: #0b2a4a; letter-spacing: 0.01em; }
+          .print-budget-contact-line { margin: 1px 0; font-size: 10px; color: #475569; }
           .print-budget-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin-bottom: 14px; font-size: 12px; }
           .print-budget-table { width: 100%; border-collapse: collapse; font-size: 12px; }
           .print-budget-table th, .print-budget-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }

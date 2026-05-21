@@ -101,5 +101,5 @@ export function buildAlerts(
 }
 
 export function getActiveAlertsCount(alerts: AlertItem[]): number {
-  return alerts.filter((a) => a.tone !== "ok").length;
+  return alerts.filter((a) => a.tone === "danger" || a.tone === "warn").length;
 }
