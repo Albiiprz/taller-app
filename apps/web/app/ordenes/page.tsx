@@ -7,6 +7,7 @@ import { useSession, type Role } from "../components/useSession";
 import { listWorkOrders } from "../core/ordersApi";
 import {
   filterOrdersForRoleDay,
+  isOrderForDay,
   statusBadgeClass,
   statusLabel,
   type OtItem,
@@ -45,8 +46,9 @@ function tabLabel(section: RoleSection, role: Role) {
   return "Todos";
 }
 
-function filterBySection(section: RoleSection, rows: OtItem[]): OtItem[] {
-  if (section === "all" || section === "today") return rows;
+function filterBySection(section: RoleSection, rows: OtItem[], today: string): OtItem[] {
+  if (section === "all") return rows;
+  if (section === "today") return rows.filter((it) => isOrderForDay(it, today));
   if (section === "current") return rows.filter((it) => it.stage === "REPARACION" || it.stage === "QC");
   if (section === "arrivals") return rows.filter((it) => it.stage === "PROGRAMADA" || it.stage === "RECEPCION");
   if (section === "pending") return rows.filter((it) => ["PROGRAMADA", "RECEPCION", "DIAGNOSTICO", "PRESUPUESTO_ENVIADO", "APROBADO"].includes(it.stage));
@@ -294,14 +296,14 @@ export default function OrdenesPage() {
   const sectionCounts = useMemo(() => {
     const counts: Partial<Record<RoleSection, number>> = {};
     for (const key of sectionOptions(activeRole)) {
-      counts[key] = filterBySection(key, searchedRows).length;
+      counts[key] = filterBySection(key, searchedRows, today).length;
     }
     return counts;
-  }, [searchedRows, activeRole]);
+  }, [searchedRows, activeRole, today]);
 
   const filtered = useMemo(
-    () => [...filterBySection(section, searchedRows)].sort((a, b) => orderWeight(a).localeCompare(orderWeight(b))),
-    [section, searchedRows],
+    () => [...filterBySection(section, searchedRows, today)].sort((a, b) => orderWeight(a).localeCompare(orderWeight(b))),
+    [section, searchedRows, today],
   );
 
   const summaries = useMemo(() => summaryCards(activeRole, roleRows), [activeRole, roleRows]);

@@ -368,7 +368,7 @@ export class SchedulingService {
     const googleCalendar = await this.syncGoogleCalendarForAppointment(appointment.id, input.actorRole ?? null, input.actorName ?? null);
 
     const durationMin = Math.round((endAt.getTime() - startAt.getTime()) / 60000);
-    const whText = `Hola ${input.client.name}, tu cita en TALLER es el ${this.formatHumanDate(startAt)} a las ${this.formatHumanTime(startAt)}. Matricula: ${input.vehicle?.plate ?? 'N/A'}. Duracion estimada: ${durationMin} minutos. Gracias.`;
+    const whText = `Hola ${input.client.name}, tu cita en Talleres MALU es el ${this.formatHumanDate(startAt)} a las ${this.formatHumanTime(startAt)}. Motivo: ${input.workType}. Matricula: ${input.vehicle?.plate ?? 'N/A'}. Duracion estimada: ${durationMin} minutos. Gracias.`;
     const whatsappUrl = `https://wa.me/${this.normalizePhone(input.client.phone)}?text=${encodeURIComponent(whText)}`;
     const whatsappAutoSent = await this.sendWhatsAppAuto(input.client.phone, whText);
 
@@ -833,7 +833,7 @@ export class SchedulingService {
     if (hasSchedule && nextStart && nextEnd) {
       const durationMin = Math.round((nextEnd.getTime() - nextStart.getTime()) / 60000);
       const phone = input.client?.phone ?? after.client_phone ?? '';
-      const whText = `Hola ${after.client_name ?? 'cliente'}, tu cita en TALLER es el ${this.formatHumanDate(nextStart)} a las ${this.formatHumanTime(nextStart)}. Matricula: ${after.vehicle_plate ?? 'N/A'}. Duracion estimada: ${durationMin} minutos. Gracias.`;
+      const whText = `Hola ${after.client_name ?? 'cliente'}, tu cita en Talleres MALU es el ${this.formatHumanDate(nextStart)} a las ${this.formatHumanTime(nextStart)}. Motivo: ${nextWorkType ?? 'Revision'}. Matricula: ${after.vehicle_plate ?? 'N/A'}. Duracion estimada: ${durationMin} minutos. Gracias.`;
       whatsappUrl = phone ? `https://wa.me/${this.normalizePhone(phone)}?text=${encodeURIComponent(whText)}` : null;
       whatsappAutoSent = phone ? await this.sendWhatsAppAuto(phone, whText) : false;
     }
