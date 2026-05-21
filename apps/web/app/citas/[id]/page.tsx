@@ -25,6 +25,7 @@ export default function EditarCitaPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
   const [plate, setPlate] = useState("");
   const [vin, setVin] = useState("");
   const [model, setModel] = useState("");
@@ -45,6 +46,7 @@ export default function EditarCitaPage() {
       setName(appt.client.name ?? "");
       setPhone(appt.client.phone ?? "");
       setEmail(appt.client.email ?? "");
+      setCompany(appt.client.company ?? "");
       setPlate(appt.vehicle.plate ?? "");
       setVin(appt.vehicle.vin ?? "");
       setModel(appt.vehicle.model ?? "");
@@ -82,6 +84,7 @@ export default function EditarCitaPage() {
           name: name || undefined,
           phone: phone || undefined,
           email: email || undefined,
+          company: company || undefined,
         },
         vehicle: {
           plate: plate || undefined,
@@ -133,6 +136,7 @@ export default function EditarCitaPage() {
             <input className="rounded-xl border-2 border-slate-200 p-3 text-sm font-semibold" placeholder="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
             <input className="rounded-xl border-2 border-slate-200 p-3 text-sm font-semibold" placeholder="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input className="rounded-xl border-2 border-slate-200 p-3 text-sm font-semibold" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className="rounded-xl border-2 border-slate-200 p-3 text-sm font-semibold" placeholder="Empresa" value={company} onChange={(e) => setCompany(e.target.value)} />
             <input className="rounded-xl border-2 border-slate-200 p-3 text-sm font-semibold" placeholder="Matrícula" value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} />
             <input className="rounded-xl border-2 border-slate-200 p-3 text-sm font-semibold" placeholder="VIN" value={vin} onChange={(e) => setVin(e.target.value)} />
             <input className="rounded-xl border-2 border-slate-200 p-3 text-sm font-semibold" placeholder="Modelo" value={model} onChange={(e) => setModel(e.target.value)} />

@@ -57,6 +57,7 @@ type AppointmentDetailRow = AppointmentRow & {
   client_name: string | null;
   client_phone: string | null;
   client_email: string | null;
+  client_company: string | null;
   vehicle_plate: string | null;
   vehicle_vin: string | null;
   vehicle_model: string | null;
@@ -290,7 +291,7 @@ export class SchedulingService {
   }
 
   async createAppointment(input: {
-    client: { name: string; phone: string; email?: string; type?: string };
+    client: { name: string; phone: string; email?: string; company?: string; type?: string };
     vehicle?: { plate?: string; vin?: string; model?: string; notes?: string };
     technicianId: string;
     startAt: string;
@@ -395,7 +396,7 @@ export class SchedulingService {
   }
 
   async createAppointmentDraft(input: {
-    client?: { name?: string; phone?: string; email?: string; type?: string };
+    client?: { name?: string; phone?: string; email?: string; company?: string; type?: string };
     vehicle?: { plate?: string; vin?: string; model?: string; notes?: string };
     workType?: string;
     notes?: string;
@@ -633,7 +634,7 @@ export class SchedulingService {
   }
 
   async updateAppointment(appointmentId: string, input: {
-    client?: { name?: string; phone?: string; email?: string; type?: string };
+    client?: { name?: string; phone?: string; email?: string; company?: string; type?: string };
     vehicle?: { plate?: string; vin?: string; model?: string; notes?: string };
     technicianId?: string;
     startAt?: string;
@@ -678,13 +679,15 @@ export class SchedulingService {
       if (clientId) {
         await this.db.query(
           `UPDATE clients
-           SET name = COALESCE($2, name), phone = COALESCE($3, phone), email = COALESCE($4, email)
+           SET name = COALESCE($2, name), phone = COALESCE($3, phone), email = COALESCE($4, email),
+               company = COALESCE($5, company)
            WHERE id = $1`,
           [
             clientId,
             input.client.name?.trim() || null,
             input.client.phone?.trim() || null,
             input.client.email?.trim() || null,
+            input.client.company?.trim() || null,
           ],
         );
       } else {
@@ -1075,7 +1078,7 @@ export class SchedulingService {
     return conflict.rowCount === 0;
   }
 
-  private async upsertClient(input: { name: string; phone: string; email?: string; type?: string }) {
+  private async upsertClient(input: { name: string; phone: string; email?: string; company?: string; type?: string }) {
     if (!input.name?.trim()) throw new BadRequestException('client.name es obligatorio');
     if (!input.phone?.trim()) throw new BadRequestException('client.phone es obligatorio');
     const normalizedPhone = input.phone.trim();
@@ -1083,20 +1086,26 @@ export class SchedulingService {
       `SELECT id FROM clients WHERE phone = $1 LIMIT 1`,
       [normalizedPhone],
     );
-    if (existing.rows[0]) return existing.rows[0].id;
+    if (existing.rows[0]) {
+      if (input.company?.trim()) {
+        await this.db.query(`UPDATE clients SET company = COALESCE(company, $2) WHERE id = $1`, [existing.rows[0].id, input.company.trim()]);
+      }
+      return existing.rows[0].id;
+    }
     const created = await this.db.query<{ id: number }>(
-      `INSERT INTO clients (name, phone, email)
-       VALUES ($1, $2, $3) RETURNING id`,
-      [input.name.trim(), normalizedPhone, input.email?.trim() || null],
+      `INSERT INTO clients (name, phone, email, company)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [input.name.trim(), normalizedPhone, input.email?.trim() || null, input.company?.trim() || null],
     );
     return created.rows[0].id;
   }
 
-  private async upsertClientOptional(input?: { name?: string; phone?: string; email?: string; type?: string }) {
+  private async upsertClientOptional(input?: { name?: string; phone?: string; email?: string; company?: string; type?: string }) {
     if (!input) return null;
     const name = input.name?.trim() || '';
     const phone = input.phone?.trim() || '';
     const email = input.email?.trim() || null;
+    const company = input.company?.trim() || null;
 
     if (!name && !phone && !email) return null;
 
@@ -1109,19 +1118,20 @@ export class SchedulingService {
         await this.db.query(
           `UPDATE clients
            SET name = CASE WHEN COALESCE(name, '') = '' THEN $2 ELSE name END,
-               email = COALESCE(email, $3)
+               email = COALESCE(email, $3),
+               company = COALESCE(company, $4)
            WHERE id = $1`,
-          [existing.rows[0].id, name || 'Cliente', email],
+          [existing.rows[0].id, name || 'Cliente', email, company],
         );
         return existing.rows[0].id;
       }
     }
 
     const created = await this.db.query<{ id: number }>(
-      `INSERT INTO clients (name, phone, email)
-       VALUES ($1, $2, $3)
+      `INSERT INTO clients (name, phone, email, company)
+       VALUES ($1, $2, $3, $4)
        RETURNING id`,
-      [name || 'Cliente', phone || null, email],
+      [name || 'Cliente', phone || null, email, company],
     );
     return created.rows[0].id;
   }
@@ -1220,6 +1230,7 @@ export class SchedulingService {
               c.name AS client_name,
               c.phone AS client_phone,
               c.email AS client_email,
+              c.company AS client_company,
               v.plate AS vehicle_plate,
               v.vin AS vehicle_vin,
               v.vehicle_type AS vehicle_model,
@@ -1250,6 +1261,7 @@ export class SchedulingService {
         name: row.client_name,
         phone: row.client_phone,
         email: row.client_email,
+        company: row.client_company,
       },
       vehicle: {
         plate: row.vehicle_plate,

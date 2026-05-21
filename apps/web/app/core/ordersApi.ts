@@ -705,7 +705,7 @@ export type AppointmentCreateResponse = {
 };
 
 export type AppointmentDraftInput = {
-  client?: { name?: string; phone?: string; email?: string; type?: string };
+  client?: { name?: string; phone?: string; email?: string; company?: string; type?: string };
   vehicle?: { plate?: string; vin?: string; model?: string; notes?: string };
   workType?: string;
   notes?: string;
@@ -729,6 +729,7 @@ export type AppointmentDetail = {
     name: string | null;
     phone: string | null;
     email: string | null;
+    company: string | null;
   };
   vehicle: {
     plate: string | null;
@@ -867,7 +868,7 @@ export async function getAppointment(input: { id: string }): Promise<Appointment
 
 export async function updateAppointment(input: {
   id: string;
-  client?: { name?: string; phone?: string; email?: string; type?: string };
+  client?: { name?: string; phone?: string; email?: string; company?: string; type?: string };
   vehicle?: { plate?: string; vin?: string; model?: string; notes?: string };
   technicianId?: string;
   startAt?: string;

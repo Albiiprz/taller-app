@@ -202,7 +202,7 @@ function NuevaCitaForm() {
           name: name.trim(),
           phone: phone.trim(),
           email: email.trim() || undefined,
-          type: company.trim() || undefined,
+          company: company.trim() || undefined,
         },
         vehicle: {
           plate: plate.trim() || undefined,
@@ -257,7 +257,7 @@ function NuevaCitaForm() {
           name: name.trim() || undefined,
           phone: phone.trim() || undefined,
           email: email.trim() || undefined,
-          type: company.trim() || undefined,
+          company: company.trim() || undefined,
         },
         vehicle: {
           plate: plate.trim() || undefined,
