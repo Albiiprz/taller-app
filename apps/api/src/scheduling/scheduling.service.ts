@@ -873,6 +873,15 @@ export class SchedulingService {
       [apptId],
     );
 
+    await this.db.query(
+      `UPDATE work_orders wo
+       SET status = 'CERRADO', updated_at = NOW()
+       FROM appointments a
+       WHERE a.id = $1 AND wo.id = a.work_order_id
+         AND wo.status = 'PROGRAMADA'`,
+      [apptId],
+    );
+
     const googleCalendar = await this.removeGoogleCalendarEvent(
       current.google_event_id,
       apptId,
