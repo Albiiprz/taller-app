@@ -142,9 +142,13 @@ export default function VoiceAppointment({ className = "" }: Props) {
   const [error, setError] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recogRef = useRef<any>(null);
+  const [supported, setSupported] = useState(false);
 
-  const supported = typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    setSupported(!!w.SpeechRecognition || !!w.webkitSpeechRecognition);
+  }, []);
 
   const stopListening = useCallback(() => {
     recogRef.current?.stop();
