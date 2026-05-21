@@ -156,7 +156,9 @@ export default function VoiceAppointment({ className = "" }: Props) {
   function startListening() {
     setError("");
     setTranscript("");
-    const SR = (window.SpeechRecognition ?? (window as typeof window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SR) { setError("Tu navegador no soporta reconocimiento de voz."); return; }
     const r = new SR();
     r.lang = "es-ES";
