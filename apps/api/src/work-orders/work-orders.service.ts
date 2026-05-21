@@ -542,6 +542,15 @@ export class WorkOrdersService {
     return this.toProductResponse(updated.rows[0]);
   }
 
+  async deleteProduct(id: string, actorRole?: string): Promise<{ deleted: true }> {
+    this.assertInventoryPermission(actorRole);
+    const pid = id?.trim().toUpperCase();
+    if (!pid) throw new BadRequestException('id inválido');
+    const res = await this.db.query('DELETE FROM products WHERE id = $1 RETURNING id', [pid]);
+    if (!res.rows[0]) throw new NotFoundException(`Producto no encontrado: ${pid}`);
+    return { deleted: true };
+  }
+
   async adjustStock(id: string, dto: AdjustStockDto, actorRole?: string, actorName?: string): Promise<{ product: ProductResponse; move: StockMoveResponse }> {
     this.assertInventoryPermission(actorRole);
 

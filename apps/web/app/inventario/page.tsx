@@ -7,6 +7,7 @@ import { useSession } from "../components/useSession";
 import {
   adjustInventoryStock,
   createInventoryProduct,
+  deleteInventoryProduct,
   findInventoryProductByBarcode,
   listInventoryMoves,
   listInventoryProducts,
@@ -859,6 +860,23 @@ function InventarioPageContent() {
                       >
                         Editar
                       </button>
+                      {canManage && (
+                        <button
+                          type="button"
+                          className="btn-tap shrink-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-extrabold text-red-700"
+                          onClick={async () => {
+                            if (!confirm(`¿Eliminar "${p.name}" (${p.id})? Esta acción no se puede deshacer.`)) return;
+                            try {
+                              await deleteInventoryProduct(p.id);
+                              setProducts((prev) => prev.filter((x) => x.id !== p.id));
+                            } catch (e) {
+                              alert(e instanceof Error ? e.message : "No pude eliminar el producto.");
+                            }
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      )}
                     </li>
                   );
                 })}

@@ -626,6 +626,10 @@ export async function updateInventoryProduct(input: {
   return unwrap(raw);
 }
 
+export async function deleteInventoryProduct(id: string): Promise<{ deleted: true }> {
+  return apiFetch<{ deleted: true }>(`/inventory/products/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 export async function adjustInventoryStock(input: {
   id: string;
   delta: number;

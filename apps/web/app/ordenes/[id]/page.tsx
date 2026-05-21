@@ -1278,8 +1278,8 @@ export default function DetalleOT() {
                         <div key={line.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                           <div className="grid grid-cols-[1fr_64px_80px] gap-2">
                             <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold" value={line.concept} onChange={(e) => updateLine(line.id, { concept: e.target.value })} disabled={!canEditBudget} placeholder="Concepto" />
-                            <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-center" value={String(line.qty)} onChange={(e) => updateLine(line.id, { qty: parseLocaleNumber(e.target.value) })} inputMode="decimal" disabled={!canEditBudget} />
-                            <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-right" value={String(line.price)} onChange={(e) => updateLine(line.id, { price: parseLocaleNumber(e.target.value) })} inputMode="decimal" disabled={!canEditBudget} />
+                            <input type="number" step="1" min="0" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-center" defaultValue={line.qty} key={line.id + "_qty"} onBlur={(e) => updateLine(line.id, { qty: parseLocaleNumber(e.target.value) })} disabled={!canEditBudget} />
+                            <input type="number" step="0.01" min="0" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-right" defaultValue={line.price} key={line.id + "_price"} onBlur={(e) => updateLine(line.id, { price: parseLocaleNumber(e.target.value) })} disabled={!canEditBudget} />
                           </div>
                           <div className="mt-2 flex items-center justify-between">
                             <p className="text-sm font-extrabold text-slate-700">{((line.qty || 0) * (line.price || 0)).toFixed(2)} EUR</p>

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -108,6 +109,12 @@ export class WorkOrdersController {
   updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto, @Req() req: Request) {
     const actor = this.actorFromReq(req);
     return this.service.updateProduct(id, dto, actor.actorRole);
+  }
+
+  @Delete('/inventory/products/:id')
+  deleteProduct(@Param('id') id: string, @Req() req: Request) {
+    const actor = this.actorFromReq(req);
+    return this.service.deleteProduct(id, actor.actorRole);
   }
 
   @Post('/inventory/products/:id/adjust')
