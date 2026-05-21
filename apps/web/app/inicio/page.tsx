@@ -287,7 +287,7 @@ export default function InicioPage() {
       const publicKey = await getPushPublicKey();
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: base64ToUint8Array(publicKey),
+        applicationServerKey: base64ToUint8Array(publicKey) as Uint8Array<ArrayBuffer>,
       });
       await subscribePushApi(sub);
       setPushEnabled(true);
