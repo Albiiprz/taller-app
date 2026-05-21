@@ -140,7 +140,7 @@ export default function VoiceAppointment({ className = "" }: Props) {
   const [transcript, setTranscript] = useState("");
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [error, setError] = useState("");
-  const recogRef = useRef<SpeechRecognition | null>(null);
+  const recogRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
 
   const supported = typeof window !== "undefined" &&
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
