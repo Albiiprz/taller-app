@@ -17,6 +17,15 @@ type ApiWorkOrder = {
   title: string;
   priority: OtPriority;
   status: OtStatus;
+  clientName?: string | null;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+  vehicleModel?: string | null;
+  appointmentStart?: string | null;
+  appointmentEnd?: string | null;
+  appointmentWorkType?: string | null;
+  appointmentNotes?: string | null;
+  technicianName?: string | null;
   assignedToUserId?: number | null;
   scheduledStart?: string | null;
   scheduledEnd?: string | null;
@@ -212,6 +221,15 @@ function mapApiOrderToOtItem(row: ApiWorkOrder): OtItem {
     id: row.id,
     plate: row.plate,
     title: row.title,
+    clientName: row.clientName ?? null,
+    clientPhone: row.clientPhone ?? null,
+    clientEmail: row.clientEmail ?? null,
+    vehicleModel: row.vehicleModel ?? null,
+    appointmentStart: row.appointmentStart ?? null,
+    appointmentEnd: row.appointmentEnd ?? null,
+    appointmentWorkType: row.appointmentWorkType ?? null,
+    appointmentNotes: row.appointmentNotes ?? null,
+    technicianName: row.technicianName ?? null,
     prio: row.priority,
     stage: row.status,
     assignedToUserId: row.assignedToUserId ? String(row.assignedToUserId) : null,

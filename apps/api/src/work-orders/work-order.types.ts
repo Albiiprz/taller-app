@@ -35,6 +35,15 @@ export type WorkOrderResponse = {
   title: string;
   priority: OtPriority;
   status: OtStatus;
+  clientName: string | null;
+  clientPhone: string | null;
+  clientEmail: string | null;
+  vehicleModel: string | null;
+  appointmentStart: string | null;
+  appointmentEnd: string | null;
+  appointmentWorkType: string | null;
+  appointmentNotes: string | null;
+  technicianName: string | null;
   clientId: number | null;
   vehicleId: number | null;
   assignedToUserId: number | null;

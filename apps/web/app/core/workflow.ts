@@ -19,6 +19,15 @@ export type OtItem = {
   id: string;
   plate: string;
   title: string;
+  clientName?: string | null;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+  vehicleModel?: string | null;
+  appointmentStart?: string | null;
+  appointmentEnd?: string | null;
+  appointmentWorkType?: string | null;
+  appointmentNotes?: string | null;
+  technicianName?: string | null;
   prio: OtPriority;
   stage: OtStatus;
   assignedToUserId?: string | null;
@@ -38,7 +47,7 @@ type SessionRole =
 const STATUS_META: Record<OtStatus, { label: string; badge: string }> = {
   PROGRAMADA: { label: "Pendiente para hoy", badge: "bg-indigo-100 text-indigo-700" },
   RECEPCION: { label: "Recepción", badge: "bg-sky-100 text-sky-700" },
-  DIAGNOSTICO: { label: "Diagnóstico", badge: "bg-purple-100 text-purple-700" },
+  DIAGNOSTICO: { label: "Recepción", badge: "bg-sky-100 text-sky-700" },
   PRESUPUESTO_ENVIADO: { label: "Presupuesto enviado", badge: "bg-indigo-100 text-indigo-700" },
   APROBADO: { label: "Aprobado", badge: "bg-emerald-100 text-emerald-700" },
   REPARACION: { label: "En trabajo", badge: "bg-orange-100 text-orange-700" },
@@ -118,7 +127,6 @@ export function canRoleMoveOt(role: Role, from: OtStatus, to: OtStatus): boolean
 export const WORKSHOP_BOARD_COLUMNS: Array<{ key: OtStatus; title: string; subtitle: string }> = [
   { key: "PROGRAMADA", title: "Pendientes", subtitle: "Agenda del día" },
   { key: "RECEPCION", title: "Recepción", subtitle: "Entrada" },
-  { key: "DIAGNOSTICO", title: "Diagnóstico", subtitle: "Pendientes" },
   { key: "REPARACION", title: "En trabajo", subtitle: "En curso" },
   { key: "LISTO_ENTREGA", title: "Listo para avisar", subtitle: "Avisar cliente" },
 ];
@@ -146,7 +154,8 @@ export function isOrderForDay(order: OtItem, ymd: string): boolean {
 }
 
 export function shouldShowProgrammedByRole(role: SessionRole): boolean {
-  return role === "Administración" || role === "Oficina";
+  void role;
+  return false;
 }
 
 export function filterOrdersForRoleDay(

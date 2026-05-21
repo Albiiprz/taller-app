@@ -133,6 +133,12 @@ function formatDateShort(iso: string) {
   } catch { return iso; }
 }
 
+function parseLocaleNumber(value: string): number {
+  const normalized = value.replace(/\s+/g, "").replace(",", ".");
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function describeSnapshot(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const parts = Object.entries(data as Record<string, unknown>)
@@ -184,7 +190,7 @@ export default function DetalleOT() {
   const [otError, setOtError] = useState("");
   const { pending, scheduleAction, undoAction } = useUndoAction();
   const [nowTs, setNowTs] = useState(Date.now());
-  const [activeTab, setActiveTab] = useState<Tab>("fotos");
+  const [activeTab, setActiveTab] = useState<Tab>("entrada");
   const [toast, setToast] = useState<Toast>(null);
   const [reasonModal, setReasonModal] = useState<ReasonModal>(null);
   const [reasonInput, setReasonInput] = useState("");
@@ -583,17 +589,18 @@ export default function DetalleOT() {
     } catch (e) { showToast("error", e instanceof Error ? e.message : "No pude guardar la nota."); }
   }
 
+  function printBudget() {
+    window.print();
+  }
+
   const allowedNextStages = ot
     ? getAllowedNextStatuses(ot.stage).filter((s) => s !== ot.stage && canRoleMoveOt(role as Role, ot.stage, s))
     : [];
 
   const TABS: Array<{ key: Tab; label: string; count?: number }> = [
-    { key: "fotos", label: "Fotos", count: photos.length },
-    { key: "material", label: "Material" },
-    { key: "notas", label: "Notas", count: notes.length },
     { key: "entrada", label: "Entrada" },
     { key: "historial", label: "Historial", count: timeline.length > 0 ? timeline.length : undefined },
-    { key: "mas", label: "Más" },
+    { key: "mas", label: "Presupuesto" },
   ];
 
   return (
@@ -638,8 +645,10 @@ export default function DetalleOT() {
               <span className="text-xs font-extrabold text-white/40">#{id}</span>
             </div>
 
-            <p className="mt-4 text-6xl font-black tracking-tight text-white leading-none">{ot.plate}</p>
-            <p className="mt-2 text-base font-semibold text-white/70 leading-snug">{ot.title}</p>
+            <p className="mt-4 text-4xl sm:text-5xl font-black tracking-tight text-white leading-none">{ot.clientName || ot.title}</p>
+            <p className="mt-2 text-base font-semibold text-white/70 leading-snug">
+              {ot.plate || "Sin matrícula"}{ot.vehicleModel ? ` · ${ot.vehicleModel}` : ""}
+            </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${statusBadgeClass(ot.stage)}`}>
@@ -719,6 +728,19 @@ export default function DetalleOT() {
           </div>
         ) : (
           <>
+            <section className="mt-1 rounded-3xl border-2 border-slate-200 bg-white p-5">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Datos de cita</p>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <p className="text-sm font-semibold text-slate-700"><b>Fecha/hora:</b> {ot.appointmentStart ? formatDate(ot.appointmentStart) : "Sin cita asociada"}</p>
+                <p className="text-sm font-semibold text-slate-700"><b>Técnico:</b> {ot.technicianName || "Sin asignar"}</p>
+                <p className="text-sm font-semibold text-slate-700"><b>Cliente/Empresa:</b> {ot.clientName || "-"}</p>
+                <p className="text-sm font-semibold text-slate-700"><b>Teléfono:</b> {ot.clientPhone || "-"}</p>
+                <p className="text-sm font-semibold text-slate-700"><b>Email:</b> {ot.clientEmail || "-"}</p>
+                <p className="text-sm font-semibold text-slate-700"><b>Matrícula:</b> {ot.plate || "-"}</p>
+                <p className="text-sm font-semibold text-slate-700 sm:col-span-2"><b>Motivo:</b> {ot.appointmentWorkType || ot.title || "-"}</p>
+              </div>
+            </section>
+
             {/* ── CRONÓMETRO + EMPEZAR ── */}
             <section className="mt-4 rounded-3xl border-2 border-slate-200 bg-white p-5">
               {/* Timer display */}
@@ -775,63 +797,17 @@ export default function DetalleOT() {
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Sesiones</p>
                 </div>
               </div>
-            </section>
-
-            {/* ── ACCIONES RÁPIDAS ── */}
-            <section className="mt-3 grid grid-cols-4 gap-2">
-              {/* Foto */}
-              <label className="btn-tap flex cursor-pointer flex-col items-center gap-2 rounded-2xl bg-violet-600 px-3 py-4 text-white shadow-sm active:scale-95 transition-transform">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-                <span className="text-xs font-extrabold">Foto</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    setPhotoTagModalFile(f);
-                    e.currentTarget.value = "";
-                  }}
-                />
-              </label>
-
-              {/* Material */}
-              <button
-                className="btn-tap flex flex-col items-center gap-2 rounded-2xl bg-amber-500 px-3 py-4 text-white shadow-sm active:scale-95 transition-transform"
-                onClick={() => setActiveTab("material")}
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-                </svg>
-                <span className="text-xs font-extrabold">Material</span>
-              </button>
-
-              {/* Nota */}
-              <button
-                className="btn-tap flex flex-col items-center gap-2 rounded-2xl bg-sky-500 px-3 py-4 text-white shadow-sm active:scale-95 transition-transform"
-                onClick={() => setActiveTab("notas")}
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                </svg>
-                <span className="text-xs font-extrabold">Nota</span>
-              </button>
-
-              {/* Mover */}
-              <button
-                className={`btn-tap flex flex-col items-center gap-2 rounded-2xl px-3 py-4 text-white shadow-sm active:scale-95 transition-transform ${isMoveOpen ? "bg-slate-900" : "bg-slate-600"}`}
-                onClick={() => setIsMoveOpen((v) => !v)}
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
-                </svg>
-                <span className="text-xs font-extrabold">Mover</span>
-              </button>
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <button
+                  className={`btn-tap inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-extrabold text-white ${isMoveOpen ? "bg-slate-900" : "bg-slate-700"}`}
+                  onClick={() => setIsMoveOpen((v) => !v)}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  </svg>
+                  Mover estado
+                </button>
+              </div>
             </section>
 
             {/* ── MOVER ESTADO — inline buttons ── */}
@@ -1165,8 +1141,8 @@ export default function DetalleOT() {
                         <div key={line.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                           <div className="grid grid-cols-[1fr_64px_80px] gap-2">
                             <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold" value={line.concept} onChange={(e) => updateLine(line.id, { concept: e.target.value })} disabled={!canEditBudget} placeholder="Concepto" />
-                            <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-center" value={String(line.qty)} onChange={(e) => updateLine(line.id, { qty: Number(e.target.value || 0) })} disabled={!canEditBudget} />
-                            <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-right" value={String(line.price)} onChange={(e) => updateLine(line.id, { price: Number(e.target.value || 0) })} disabled={!canEditBudget} />
+                            <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-center" value={String(line.qty)} onChange={(e) => updateLine(line.id, { qty: parseLocaleNumber(e.target.value) })} inputMode="decimal" disabled={!canEditBudget} />
+                            <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-right" value={String(line.price)} onChange={(e) => updateLine(line.id, { price: parseLocaleNumber(e.target.value) })} inputMode="decimal" disabled={!canEditBudget} />
                           </div>
                           <div className="mt-2 flex items-center justify-between">
                             <p className="text-sm font-extrabold text-slate-700">{((line.qty || 0) * (line.price || 0)).toFixed(2)} EUR</p>
@@ -1183,6 +1159,12 @@ export default function DetalleOT() {
                   <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500 mb-3">Rol activo</p>
                   <RoleSelector />
                 </div>
+                <button
+                  onClick={printBudget}
+                  className="btn-tap w-full rounded-2xl border-2 border-slate-300 bg-white p-3 text-sm font-extrabold text-slate-800"
+                >
+                  Imprimir presupuesto
+                </button>
               </section>
             )}
           </>

@@ -56,9 +56,10 @@ function todayYmd() {
 }
 
 function orderSortWeight(item: OtItem) {
+  const schedule = item.scheduledStart ?? "9999-12-31T23:59:59.999Z";
   const prio = item.prio === "Urgente" ? 0 : item.prio === "Alta" ? 1 : 2;
-  const stage = ["REPARACION", "QC", "DIAGNOSTICO", "RECEPCION", "PROGRAMADA", "LISTO_ENTREGA", "ENTREGADO", "FACTURADO", "CERRADO"].indexOf(item.stage);
-  return `${prio}-${stage === -1 ? 99 : stage}-${item.scheduledStart ?? item.createdAt ?? ""}`;
+  const stage = ["PROGRAMADA", "RECEPCION", "REPARACION", "QC", "LISTO_ENTREGA", "ENTREGADO", "FACTURADO", "CERRADO", "DIAGNOSTICO"].indexOf(item.stage);
+  return `${schedule}-${prio}-${stage === -1 ? 99 : stage}`;
 }
 
 function pickCurrentWork(items: OtItem[]) {
@@ -67,7 +68,7 @@ function pickCurrentWork(items: OtItem[]) {
 }
 
 function isDelayStage(item: OtItem) {
-  return item.stage === "PROGRAMADA" || item.stage === "DIAGNOSTICO" || item.stage === "PRESUPUESTO_ENVIADO";
+  return item.stage === "PROGRAMADA" || item.stage === "PRESUPUESTO_ENVIADO";
 }
 
 function Section({ title, text, children, tone = "content" }: { title: string; text?: string; children: React.ReactNode; tone?: "action" | "status" | "content" | "history" }) {
@@ -118,8 +119,8 @@ function OrderMiniCard({
     <article className="surface-content p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-base font-extrabold text-slate-900">{item.plate}</p>
-          <p className="mt-1 text-sm font-semibold text-slate-700">{item.title}</p>
+          <p className="text-base font-extrabold text-slate-900">{item.clientName || item.title}</p>
+          <p className="mt-1 text-sm font-semibold text-slate-700">{item.plate}</p>
         </div>
         <Badge className={prioBadgeClass(item.prio)}>{item.prio}</Badge>
       </div>
@@ -162,8 +163,8 @@ function MoveCard({
     <article className="surface-content p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-extrabold text-slate-900">{item.plate}</p>
-          <p className="mt-1 text-sm font-semibold text-slate-700">{item.title}</p>
+          <p className="text-sm font-extrabold text-slate-900">{item.clientName || item.title}</p>
+          <p className="mt-1 text-sm font-semibold text-slate-700">{item.plate}</p>
         </div>
         <Badge className={prioBadgeClass(item.prio)}>{item.prio}</Badge>
       </div>
@@ -235,7 +236,6 @@ function BoardSection({
   const columnAccent: Partial<Record<OtStatus, string>> = {
     PROGRAMADA: "#4f46e5",
     RECEPCION: "#0284c7",
-    DIAGNOSTICO: "#7c3aed",
     REPARACION: "#f97316",
     QC: "#2563eb",
     LISTO_ENTREGA: "#16a34a",
@@ -255,7 +255,13 @@ function BoardSection({
       FACTURADO: [],
       CERRADO: [],
     };
-    for (const item of items) base[item.stage].push(item);
+    for (const item of items) {
+      if (item.stage === "DIAGNOSTICO") {
+        base.RECEPCION.push(item);
+        continue;
+      }
+      base[item.stage].push(item);
+    }
     return base;
   }, [items]);
 
@@ -362,7 +368,10 @@ function TallerPageContent() {
     return () => clearTimeout(timer);
   }, [searchParams]);
 
-  const roleVisibleItems = useMemo(() => filterOrdersForRoleDay(items, currentRole, today), [items, currentRole, today]);
+  const roleVisibleItems = useMemo(
+    () => [...filterOrdersForRoleDay(items, currentRole, today)].sort((a, b) => orderSortWeight(a).localeCompare(orderSortWeight(b))),
+    [items, currentRole, today],
+  );
 
   const filteredItems = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -375,13 +384,13 @@ function TallerPageContent() {
     ));
   }, [roleVisibleItems, q]);
 
-  const todaysItems = useMemo(() => items.filter((item) => isOrderForDay(item, today)), [items, today]);
+  const todaysItems = useMemo(() => [...items.filter((item) => isOrderForDay(item, today))].sort((a, b) => orderSortWeight(a).localeCompare(orderSortWeight(b))), [items, today]);
   const programmedToday = useMemo(() => todaysItems.filter((item) => item.stage === "PROGRAMADA"), [todaysItems]);
   const openToday = useMemo(() => todaysItems.filter((item) => item.stage !== "CERRADO" && item.stage !== "FACTURADO"), [todaysItems]);
-  const supervisorItems = useMemo(() => filteredItems.filter((item) => ["PROGRAMADA", "RECEPCION", "DIAGNOSTICO", "REPARACION", "QC", "LISTO_ENTREGA"].includes(item.stage)), [filteredItems]);
+  const supervisorItems = useMemo(() => filteredItems.filter((item) => ["PROGRAMADA", "RECEPCION", "REPARACION", "QC", "LISTO_ENTREGA", "DIAGNOSTICO"].includes(item.stage)), [filteredItems]);
   const urgentItems = useMemo(() => filteredItems.filter((item) => item.prio === "Urgente"), [filteredItems]);
   const blockedItems = useMemo(() => filteredItems.filter((item) => isDelayStage(item)), [filteredItems]);
-  const inventoryWaiting = useMemo(() => filteredItems.filter((item) => item.stage === "DIAGNOSTICO" || item.stage === "REPARACION"), [filteredItems]);
+  const inventoryWaiting = useMemo(() => filteredItems.filter((item) => item.stage === "REPARACION" || item.stage === "RECEPCION" || item.stage === "DIAGNOSTICO"), [filteredItems]);
   const accountingItems = useMemo(() => filteredItems.filter((item) => ["LISTO_ENTREGA", "ENTREGADO", "FACTURADO"].includes(item.stage)), [filteredItems]);
   const assignedToday = useMemo(() => {
     const mine = roleVisibleItems.filter((item) => item.assignedToUserId && item.assignedToUserId === currentUserId);

@@ -51,7 +51,7 @@ function filterBySection(section: RoleSection, rows: OtItem[], today: string): O
   if (section === "today") return rows.filter((it) => isOrderForDay(it, today));
   if (section === "current") return rows.filter((it) => it.stage === "REPARACION" || it.stage === "QC");
   if (section === "arrivals") return rows.filter((it) => it.stage === "PROGRAMADA" || it.stage === "RECEPCION");
-  if (section === "pending") return rows.filter((it) => ["PROGRAMADA", "RECEPCION", "DIAGNOSTICO", "PRESUPUESTO_ENVIADO", "APROBADO"].includes(it.stage));
+  if (section === "pending") return rows.filter((it) => ["PROGRAMADA", "RECEPCION", "PRESUPUESTO_ENVIADO", "APROBADO", "DIAGNOSTICO"].includes(it.stage));
   return rows.filter((it) => it.stage === "LISTO_ENTREGA" || it.stage === "ENTREGADO" || it.stage === "FACTURADO");
 }
 
@@ -95,8 +95,7 @@ function primaryAction(role: Role, activeRoles: Role[]) {
 
 function nextStepHint(item: OtItem) {
   if (item.stage === "PROGRAMADA") return "Pendiente de recibir";
-  if (item.stage === "RECEPCION") return "Falta diagnóstico";
-  if (item.stage === "DIAGNOSTICO") return "Esperando decisión";
+  if (item.stage === "RECEPCION" || item.stage === "DIAGNOSTICO") return "Pendiente de recepción";
   if (item.stage === "PRESUPUESTO_ENVIADO") return "Esperando respuesta";
   if (item.stage === "APROBADO") return "Listo para empezar";
   if (item.stage === "REPARACION") return "Trabajo en marcha";
@@ -107,7 +106,18 @@ function nextStepHint(item: OtItem) {
   return "Trabajo terminado";
 }
 
+function titleMain(item: OtItem) {
+  return item.clientName?.trim() || item.title;
+}
+
+function isPastScheduled(item: OtItem): boolean {
+  if (!item.scheduledStart) return false;
+  const t = new Date(item.scheduledStart).getTime();
+  return Number.isFinite(t) && t < Date.now();
+}
+
 function orderWeight(item: OtItem) {
+  const schedule = item.scheduledStart ?? "9999-12-31T23:59:59.999Z";
   const prio = item.prio === "Urgente" ? 0 : item.prio === "Alta" ? 1 : 2;
   const stage =
     item.stage === "REPARACION" ? 0 :
@@ -117,7 +127,7 @@ function orderWeight(item: OtItem) {
     item.stage === "LISTO_ENTREGA" ? 4 :
     item.stage === "ENTREGADO" ? 5 :
     6;
-  return `${prio}-${stage}-${item.scheduledStart ?? item.createdAt ?? ""}-${item.id}`;
+  return `${schedule}-${prio}-${stage}-${item.id}`;
 }
 
 function cardStripe(item: OtItem) {
@@ -140,6 +150,7 @@ function WorkCard({ item }: { item: OtItem }) {
   const isReady = item.stage === "LISTO_ENTREGA" || item.stage === "ENTREGADO" || item.stage === "FACTURADO";
   const isActive = item.stage === "REPARACION" || item.stage === "QC";
   const time = formatTime(item.scheduledStart);
+  const pastTime = isPastScheduled(item);
 
   const bg = isUrgent
     ? "bg-rose-50 border-rose-200"
@@ -155,7 +166,7 @@ function WorkCard({ item }: { item: OtItem }) {
       <div className="pl-3">
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
-          <p className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 leading-none">{item.plate}</p>
+          <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 leading-none">{titleMain(item)}</p>
           {isUrgent && (
             <span className="shrink-0 rounded-full bg-rose-500 px-2.5 py-1 text-[10px] font-black text-white uppercase">
               URGENTE
@@ -164,7 +175,9 @@ function WorkCard({ item }: { item: OtItem }) {
         </div>
 
         {/* Title */}
-        <p className="mt-2 text-sm font-semibold text-slate-600 leading-snug">{item.title}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500 leading-snug">
+          {item.plate || "Sin matrícula"}{item.vehicleModel ? ` · ${item.vehicleModel}` : ""}
+        </p>
 
         {/* Meta row */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -180,6 +193,7 @@ function WorkCard({ item }: { item: OtItem }) {
               {time}
             </span>
           )}
+          {pastTime && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-extrabold text-amber-800">Hora pasada</span>}
         </div>
 
         {/* Hint */}
@@ -192,6 +206,7 @@ function WorkCard({ item }: { item: OtItem }) {
 function WorkRow({ item }: { item: OtItem }) {
   const isUrgent = item.prio === "Urgente";
   const time = formatTime(item.scheduledStart);
+  const pastTime = isPastScheduled(item);
 
   return (
     <Link
@@ -201,13 +216,14 @@ function WorkRow({ item }: { item: OtItem }) {
       }`}
     >
       <span className={`h-10 w-1.5 shrink-0 rounded-full ${cardStripe(item)}`} />
-      <p className="w-28 shrink-0 text-2xl font-black tracking-tight text-slate-900">{item.plate}</p>
+      <p className="w-40 shrink-0 truncate text-lg font-black tracking-tight text-slate-900">{titleMain(item)}</p>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-700">{item.title}</p>
+        <p className="truncate text-xs font-semibold text-slate-500">{item.plate || "Sin matrícula"}</p>
         <p className="text-xs font-semibold text-slate-400">{nextStepHint(item)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {time && <span className="text-xs font-semibold text-slate-400">{time}</span>}
+        {pastTime && <span className="text-[10px] font-extrabold text-amber-700">Pasada</span>}
         <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${statusBadgeClass(item.stage)}`}>
           {statusLabel(item.stage)}
         </span>
@@ -289,7 +305,8 @@ export default function OrdenesPage() {
     return roleRows.filter((it) =>
       it.id.toLowerCase().includes(query) ||
       it.plate.toLowerCase().includes(query) ||
-      it.title.toLowerCase().includes(query),
+      it.title.toLowerCase().includes(query) ||
+      (it.clientName ?? "").toLowerCase().includes(query),
     );
   }, [roleRows, q]);
 

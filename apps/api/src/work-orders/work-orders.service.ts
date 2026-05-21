@@ -38,31 +38,70 @@ import {
   type StockMoveRow,
 } from './work-order.types';
 
+type WorkOrderDetailRow = WorkOrderRow & {
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  vehicle_model: string | null;
+  appointment_start: string | null;
+  appointment_end: string | null;
+  appointment_work_type: string | null;
+  appointment_notes: string | null;
+  technician_name: string | null;
+};
+
 @Injectable()
 export class WorkOrdersService {
   constructor(private readonly db: DatabaseService) {}
 
+  private readonly workOrderDetailSelect = `
+    SELECT wo.*,
+           c.name AS client_name,
+           c.phone AS client_phone,
+           c.email AS client_email,
+           v.vehicle_type AS vehicle_model,
+           ap.start_at AS appointment_start,
+           ap.end_at AS appointment_end,
+           ap.work_type AS appointment_work_type,
+           ap.notes AS appointment_notes,
+           tech.name AS technician_name
+    FROM work_orders wo
+    LEFT JOIN clients c ON c.id = wo.client_id
+    LEFT JOIN vehicles v ON v.id = wo.vehicle_id
+    LEFT JOIN LATERAL (
+      SELECT a.*
+      FROM appointments a
+      WHERE a.work_order_id = wo.id
+      ORDER BY a.created_at DESC
+      LIMIT 1
+    ) ap ON TRUE
+    LEFT JOIN users tech ON tech.id = ap.technician_id
+  `;
+
   async list(status?: string): Promise<WorkOrderResponse[]> {
-    let query = 'SELECT * FROM work_orders';
+    let query = this.workOrderDetailSelect;
     const values: unknown[] = [];
 
     if (status) {
       if (!isOtStatus(status)) {
         throw new BadRequestException(`Estado inválido: ${status}`);
       }
-      query += ' WHERE status = $1';
+      query += ' WHERE wo.status = $1';
       values.push(status);
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY wo.created_at DESC';
 
-    const res = await this.db.query<WorkOrderRow>(query, values);
+    const res = await this.db.query<WorkOrderDetailRow>(query, values);
     return res.rows.map((row) => this.toWorkOrderResponse(row));
   }
 
   async findOne(id: string): Promise<WorkOrderResponse> {
     const numericId = this.parseId(id);
-    const res = await this.db.query<WorkOrderRow>('SELECT * FROM work_orders WHERE id = $1', [numericId]);
+    const res = await this.db.query<WorkOrderDetailRow>(
+      `${this.workOrderDetailSelect} WHERE wo.id = $1`,
+      [numericId],
+    );
     const row = res.rows[0];
     if (!row) throw new NotFoundException(`OT #${id} no encontrada`);
     return this.toWorkOrderResponse(row);
@@ -120,7 +159,7 @@ export class WorkOrdersService {
       },
     });
 
-    return this.toWorkOrderResponse(created);
+    return this.findOne(String(created.id));
   }
 
   async updateStatus(id: string, dto: UpdateWorkOrderStatusDto): Promise<WorkOrderResponse> {
@@ -161,7 +200,7 @@ export class WorkOrdersService {
       afterData: { status: dto.toStatus },
     });
 
-    return this.toWorkOrderResponse(updated);
+    return this.findOne(String(updated.id));
   }
 
   async getNotes(workOrderId: string): Promise<WorkOrderNoteResponse[]> {
@@ -726,13 +765,22 @@ export class WorkOrdersService {
     );
   }
 
-  private toWorkOrderResponse(row: WorkOrderRow): WorkOrderResponse {
+  private toWorkOrderResponse(row: WorkOrderDetailRow): WorkOrderResponse {
     return {
       id: String(row.id),
       plate: row.plate,
       title: row.title,
       priority: row.priority,
       status: row.status,
+      clientName: row.client_name ?? null,
+      clientPhone: row.client_phone ?? null,
+      clientEmail: row.client_email ?? null,
+      vehicleModel: row.vehicle_model ?? null,
+      appointmentStart: row.appointment_start ?? null,
+      appointmentEnd: row.appointment_end ?? null,
+      appointmentWorkType: row.appointment_work_type ?? null,
+      appointmentNotes: row.appointment_notes ?? null,
+      technicianName: row.technician_name ?? null,
       clientId: row.client_id,
       vehicleId: row.vehicle_id,
       assignedToUserId: row.assigned_to_user_id,
