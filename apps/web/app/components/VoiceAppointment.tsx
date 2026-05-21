@@ -10,6 +10,7 @@ type Parsed = {
   workType: string;
   date: string;
   time: string;
+  technicianHint: string;
   notes: string;
 };
 
@@ -17,7 +18,15 @@ const MONTH: Record<string, number> = {
   enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
   julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11,
 };
-const DAY_NAME = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const DAY_NAMES = [
+  ["domingo", "domingo"],
+  ["lunes", "lunes"],
+  ["martes", "martes"],
+  ["miércoles", "miercoles"],
+  ["jueves", "jueves"],
+  ["viernes", "viernes"],
+  ["sábado", "sabado"],
+];
 const WORK_KW: Array<[string, string]> = [
   ["cambio de aceite", "Cambio de aceite"],
   ["cambio aceite", "Cambio de aceite"],
@@ -38,6 +47,7 @@ const WORK_KW: Array<[string, string]> = [
   ["diagnostico", "Diagnóstico"],
   ["revisión", "Revisión general"],
   ["revision", "Revisión general"],
+  ["mantenimiento", "Mantenimiento"],
 ];
 
 function todayLocalYmd(): string {
@@ -45,21 +55,25 @@ function todayLocalYmd(): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
+function norm(s: string) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
 function parseVoice(raw: string): Parsed {
-  let text = raw.toLowerCase();
+  let text = norm(raw);
 
   // Phone: 9-digit Spanish number
-  const phoneM = text.match(/\b([6-9]\d{8})\b/);
+  const phoneM = raw.match(/\b([6-9]\d{8})\b/);
   const phone = phoneM ? phoneM[1] : "";
   if (phone) text = text.replace(phone, " ");
 
-  // Plate: new format (4 digits + 3 letters) or old
-  const plateM = raw.match(/\b(\d{4}[A-Z]{3})\b/i) ?? raw.match(/\b([A-Z]{1,2}\s?\d{4}\s?[A-Z]{2})\b/i);
+  // Plate: 4 digits + 3 letters (new) or letters+digits+letters (old)
+  const plateM = raw.match(/\b(\d{4}[A-Za-z]{3})\b/) ?? raw.match(/\b([A-Za-z]{1,2}\s?\d{4}\s?[A-Za-z]{2})\b/);
   const plate = plateM ? plateM[1].replace(/\s/g, "").toUpperCase() : "";
-  if (plate) text = text.replace(plate.toLowerCase(), " ");
+  if (plate) text = text.replace(norm(plateM![1]), " ");
 
-  // Time
-  const timeM = text.match(/a las (\d{1,2})(?:[:\s](\d{2}))?\s*(de la tarde|de la noche|de la ma[ñn]ana)?/);
+  // Time: "a las 10", "a las 10:30", "a las 3 de la tarde"
+  const timeM = text.match(/a las (\d{1,2})(?:[:\s](\d{2}))?\s*(de la tarde|de la noche|de la manana)?/);
   let time = "";
   if (timeM) {
     let h = parseInt(timeM[1]);
@@ -73,25 +87,24 @@ function parseVoice(raw: string): Parsed {
   // Date
   const today = new Date();
   let date = "";
-  if (/pasado ma[ñn]ana/.test(text)) {
+  if (/pasado manana/.test(text)) {
     const d = new Date(today); d.setDate(d.getDate() + 2);
     date = d.toISOString().slice(0, 10);
-    text = text.replace(/pasado ma[ñn]ana/, " ");
-  } else if (/ma[ñn]ana/.test(text)) {
+    text = text.replace(/pasado manana/, " ");
+  } else if (/manana/.test(text)) {
     const d = new Date(today); d.setDate(d.getDate() + 1);
     date = d.toISOString().slice(0, 10);
-    text = text.replace(/ma[ñn]ana/, " ");
+    text = text.replace(/manana/, " ");
   } else {
-    for (let i = 0; i < DAY_NAME.length; i++) {
-      const norm = DAY_NAME[i].normalize("NFD").replace(/[̀-ͯ]/g, "");
-      const pat = new RegExp(`\\b(${DAY_NAME[i]}|${norm})\\b`);
-      if (pat.test(text)) {
+    for (let i = 0; i < DAY_NAMES.length; i++) {
+      const [accented, plain] = DAY_NAMES[i];
+      if (text.includes(accented) || text.includes(plain)) {
         const d = new Date(today);
         let diff = i - d.getDay();
         if (diff <= 0) diff += 7;
         d.setDate(d.getDate() + diff);
         date = d.toISOString().slice(0, 10);
-        text = text.replace(pat, " ");
+        text = text.replace(accented, " ").replace(plain, " ");
         break;
       }
     }
@@ -110,26 +123,37 @@ function parseVoice(raw: string): Parsed {
   // Work type
   let workType = "";
   for (const [kw, label] of WORK_KW) {
-    const kwNorm = kw.normalize("NFD").replace(/[̀-ͯ]/g, "");
-    const pat = new RegExp(`\\b(${kw}|${kwNorm})\\b`);
-    if (pat.test(text)) {
+    if (text.includes(norm(kw))) {
       workType = label;
-      text = text.replace(pat, " ");
+      text = text.replace(norm(kw), " ");
       break;
     }
   }
 
-  // Client name: after "para", "cliente", "de"
+  // Technician: "técnico X", "para el técnico X", "lo hace X"
+  let technicianHint = "";
+  const techM = text.match(/(?:tecnico|mecanico|lo hace|asignado a)\s+([a-z]+(?:\s+[a-z]+)?)/);
+  if (techM) {
+    technicianHint = techM[1].split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    text = text.replace(techM[0], " ");
+  }
+
+  // Client name: after "para", "cliente", "de", or "el cliente"
   let clientName = "";
-  const nameM = text.match(/(?:para|cliente|de)\s+([a-záéíóúñü]+(?:\s+[a-záéíóúñü]+){0,3})/i);
+  const nameM = text.match(/(?:para|cliente|de)\s+([a-z]+(?:\s+[a-z]+){0,3})/);
   if (nameM) {
-    clientName = nameM[1].split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    text = text.replace(nameM[0], " ");
+    const candidate = nameM[1].trim();
+    // Avoid matching keywords as names
+    const skip = ["el", "la", "los", "las", "un", "una", "cambio", "revision", "aceite"];
+    if (!skip.includes(candidate.split(" ")[0])) {
+      clientName = candidate.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      text = text.replace(nameM[0], " ");
+    }
   }
 
   const notes = text.replace(/\s+/g, " ").trim().replace(/^[,.\s]+|[,.\s]+$/g, "");
 
-  return { clientName, phone, plate, workType, date, time, notes };
+  return { clientName, phone, plate, workType, date, time, technicianHint, notes };
 }
 
 type Props = { className?: string };
@@ -140,9 +164,9 @@ export default function VoiceAppointment({ className = "" }: Props) {
   const [transcript, setTranscript] = useState("");
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [error, setError] = useState("");
+  const [supported, setSupported] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recogRef = useRef<any>(null);
-  const [supported, setSupported] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,7 +191,7 @@ export default function VoiceAppointment({ className = "" }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const r: any = new SR();
     r.lang = "es-ES";
-    r.continuous = false;
+    r.continuous = true;      // no se cierra solo
     r.interimResults = true;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     r.onresult = (e: any) => {
@@ -176,21 +200,25 @@ export default function VoiceAppointment({ className = "" }: Props) {
       setTranscript(t);
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    r.onerror = (e: any) => setError(`Error de micrófono: ${e.error}`);
-    r.onend = () => {
-      setTranscript((t) => {
-        if (t.trim().length > 3) {
-          setParsed(parseVoice(t));
-          setPhase("confirm");
-        } else {
-          setPhase("idle");
-        }
-        return t;
-      });
+    r.onerror = (e: any) => {
+      if (e.error !== "no-speech") setError(`Error: ${e.error}`);
     };
     r.start();
     recogRef.current = r;
     setPhase("listening");
+  }
+
+  function finishListening() {
+    stopListening();
+    setTranscript((t) => {
+      if (t.trim().length > 3) {
+        setParsed(parseVoice(t));
+        setPhase("confirm");
+      } else {
+        setPhase("idle");
+      }
+      return t;
+    });
   }
 
   function confirm() {
@@ -204,6 +232,7 @@ export default function VoiceAppointment({ className = "" }: Props) {
     if (parsed.time) p.set("hora", parsed.time);
     if (parsed.notes) p.set("notas", parsed.notes);
     setPhase("idle");
+    setParsed(null);
     router.push(`/citas/nueva?${p.toString()}`);
   }
 
@@ -211,21 +240,20 @@ export default function VoiceAppointment({ className = "" }: Props) {
 
   return (
     <>
-      {/* Botón flotante */}
+      {/* Botón inline — se renderiza donde lo ponga el padre */}
       <button
         type="button"
         onClick={phase === "idle" ? startListening : undefined}
-        className={`btn-tap fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-all ${
-          phase === "listening"
-            ? "animate-pulse bg-rose-500 text-white"
-            : "bg-[#0b2a4a] text-white"
+        className={`btn-tap flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-extrabold text-white shadow-md transition-all ${
+          phase === "listening" ? "animate-pulse bg-rose-500" : "bg-[#0b2a4a]"
         } ${className}`}
         aria-label="Dictar cita por voz"
       >
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 10a7 7 0 0 1-14 0M12 19v4M8 23h8" />
         </svg>
+        <span className="hidden sm:inline">Dictar</span>
       </button>
 
       {/* Modal escuchando */}
@@ -234,26 +262,30 @@ export default function VoiceAppointment({ className = "" }: Props) {
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 shrink-0 animate-pulse items-center justify-center rounded-full bg-rose-100">
-                <svg className="h-5 w-5 text-rose-600" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 1a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z" />
-                  <path d="M19 10a7 7 0 0 1-14 0M12 19v4M8 23h8" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
+                <svg className="h-5 w-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 10a7 7 0 0 1-14 0M12 19v4M8 23h8" />
                 </svg>
               </span>
               <div>
-                <p className="text-base font-extrabold text-slate-900">Escuchando…</p>
-                <p className="text-xs font-semibold text-slate-500">Di: &quot;Para Juan López, matrícula 1234ABC, cambio de aceite mañana a las 10&quot;</p>
+                <p className="text-base font-extrabold text-slate-900">Escuchando… habla ahora</p>
+                <p className="text-xs font-semibold text-slate-500">Ej: &ldquo;Para Juan López, matrícula 1234ABC, cambio de aceite el lunes a las 10&rdquo;</p>
               </div>
             </div>
             {transcript && (
-              <p className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-700 italic">&quot;{transcript}&quot;</p>
+              <p className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-700 italic min-h-[48px]">&ldquo;{transcript}&rdquo;</p>
             )}
-            <button
-              type="button"
-              onClick={() => { stopListening(); setPhase("idle"); }}
-              className="btn-tap mt-4 w-full rounded-2xl border-2 border-slate-200 py-3 text-sm font-extrabold text-slate-700"
-            >
-              Cancelar
-            </button>
+            {error && <p className="mt-2 text-xs font-semibold text-rose-600">{error}</p>}
+            <div className="mt-4 flex gap-3">
+              <button type="button" onClick={() => { stopListening(); setPhase("idle"); }}
+                className="btn-tap flex-1 rounded-2xl border-2 border-slate-200 py-3 text-sm font-extrabold text-slate-700">
+                Cancelar
+              </button>
+              <button type="button" onClick={finishListening}
+                className="btn-tap flex-1 rounded-2xl bg-[#0b2a4a] py-3 text-sm font-extrabold text-white">
+                Listo — procesar
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -262,23 +294,24 @@ export default function VoiceAppointment({ className = "" }: Props) {
       {phase === "confirm" && parsed && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-            <p className="text-base font-extrabold text-slate-900">Confirma la cita</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500 italic">&quot;{transcript}&quot;</p>
+            <p className="text-base font-extrabold text-slate-900">Confirma los datos</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500 italic line-clamp-2">&ldquo;{transcript}&rdquo;</p>
             <div className="mt-4 space-y-2">
-              {[
-                { label: "Cliente", key: "clientName" as const, placeholder: "Nombre del cliente" },
-                { label: "Teléfono", key: "phone" as const, placeholder: "Teléfono" },
-                { label: "Matrícula", key: "plate" as const, placeholder: "1234ABC" },
-                { label: "Trabajo", key: "workType" as const, placeholder: "Tipo de trabajo" },
-                { label: "Fecha", key: "date" as const, placeholder: "YYYY-MM-DD", type: "date" },
-                { label: "Hora", key: "time" as const, placeholder: "HH:MM", type: "time" },
-              ].map(({ label, key, placeholder, type }) => (
+              {([
+                { label: "Cliente", key: "clientName", placeholder: "Nombre del cliente" },
+                { label: "Teléfono", key: "phone", placeholder: "Teléfono" },
+                { label: "Matrícula", key: "plate", placeholder: "1234ABC" },
+                { label: "Trabajo", key: "workType", placeholder: "Tipo de trabajo" },
+                { label: "Técnico", key: "technicianHint", placeholder: "Nombre técnico (opcional)" },
+                { label: "Fecha", key: "date", placeholder: "YYYY-MM-DD", type: "date" },
+                { label: "Hora", key: "time", placeholder: "HH:MM", type: "time" },
+              ] as Array<{ label: string; key: keyof Parsed; placeholder: string; type?: string }>).map(({ label, key, placeholder, type }) => (
                 <div key={key} className="flex items-center gap-3">
                   <span className="w-20 shrink-0 text-xs font-extrabold text-slate-500">{label}</span>
                   <input
                     type={type ?? "text"}
                     className={`flex-1 rounded-xl border-2 px-3 py-2 text-sm font-semibold outline-none ${
-                      parsed[key] ? "border-emerald-300 bg-emerald-50 text-slate-900" : "border-amber-300 bg-amber-50 text-slate-500"
+                      parsed[key] ? "border-emerald-300 bg-emerald-50 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-400"
                     }`}
                     value={parsed[key]}
                     placeholder={placeholder}
@@ -287,20 +320,13 @@ export default function VoiceAppointment({ className = "" }: Props) {
                 </div>
               ))}
             </div>
-            {error && <p className="mt-2 text-xs font-semibold text-rose-600">{error}</p>}
             <div className="mt-4 flex gap-3">
-              <button
-                type="button"
-                onClick={() => { setPhase("idle"); setParsed(null); }}
-                className="btn-tap flex-1 rounded-2xl border-2 border-slate-200 py-3 text-sm font-extrabold text-slate-700"
-              >
+              <button type="button" onClick={() => { setPhase("idle"); setParsed(null); }}
+                className="btn-tap flex-1 rounded-2xl border-2 border-slate-200 py-3 text-sm font-extrabold text-slate-700">
                 Cancelar
               </button>
-              <button
-                type="button"
-                onClick={confirm}
-                className="btn-tap flex-1 rounded-2xl bg-[#0b2a4a] py-3 text-sm font-extrabold text-white"
-              >
+              <button type="button" onClick={confirm}
+                className="btn-tap flex-1 rounded-2xl bg-[#0b2a4a] py-3 text-sm font-extrabold text-white">
                 Abrir formulario →
               </button>
             </div>

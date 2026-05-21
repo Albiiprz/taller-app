@@ -8,6 +8,7 @@ import InfoHint from "../components/ui/InfoHint";
 import { useSession } from "../components/useSession";
 import { timeBlockFormLabel } from "../core/labels";
 import { useUndoAction } from "../components/useUndoAction";
+import VoiceAppointment from "../components/VoiceAppointment";
 import { getReminderTargetMonday, markReminderDone } from "../core/weeklyScheduleReminder";
 import {
   cancelAppointment,
@@ -885,6 +886,7 @@ export default function CalendarioPage() {
                 <div className="flex w-full flex-col items-start gap-3 sm:w-auto sm:items-end">
                   {/* Pestañas + Nueva cita */}
                   <div className="flex flex-wrap gap-2">
+                    <VoiceAppointment />
                     <Link
                       href="/citas/nueva"
                       className="btn-tap rounded-full bg-amber-500 px-4 py-2 text-sm font-extrabold text-white shadow-md"
