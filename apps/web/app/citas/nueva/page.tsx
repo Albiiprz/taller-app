@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import MobileNav from "../../components/MobileNav";
 import InfoHint from "../../components/ui/InfoHint";
 import { Icon } from "../../components/ui/Icon";
@@ -41,24 +41,25 @@ function slotLabel(iso: string) {
   return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function NuevaCitaPage() {
+function NuevaCitaForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { hasRole, activeUser } = useSession();
   const canCreate = hasRole("Administración") || hasRole("Oficina");
   const activeRole = activeUser?.roles?.[0] ?? "Oficina";
 
   const [step, setStep] = useState<Step>(1);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(() => searchParams.get("nombre") ?? "");
+  const [phone, setPhone] = useState(() => searchParams.get("telefono") ?? "");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
-  const [plate, setPlate] = useState("");
+  const [plate, setPlate] = useState(() => searchParams.get("matricula") ?? "");
   const [vin, setVin] = useState("");
   const [model, setModel] = useState("");
-  const [workType, setWorkType] = useState("Revisión tacógrafo");
-  const [notes, setNotes] = useState("");
+  const [workType, setWorkType] = useState(() => searchParams.get("trabajo") ?? "Revisión tacógrafo");
+  const [notes, setNotes] = useState(() => searchParams.get("notas") ?? "");
   const [duration, setDuration] = useState(60);
-  const [date, setDate] = useState(todayLocalYmd());
+  const [date, setDate] = useState(() => searchParams.get("fecha") ?? todayLocalYmd());
   const [technicians, setTechnicians] = useState<AvailabilityTechnicianDay[]>([]);
   const [selectedTechId, setSelectedTechId] = useState("");
   const [dayStatus, setDayStatus] = useState<"GREEN" | "YELLOW" | "RED">("RED");
@@ -593,5 +594,13 @@ export default function NuevaCitaPage() {
 
       <MobileNav />
     </main>
+  );
+}
+
+export default function NuevaCitaPage() {
+  return (
+    <Suspense>
+      <NuevaCitaForm />
+    </Suspense>
   );
 }

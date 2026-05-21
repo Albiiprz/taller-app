@@ -18,6 +18,7 @@ import {
   isWeeklyReminderDay,
 } from "../core/weeklyScheduleReminder";
 import { getPushPublicKey, sendPushTestApi, subscribePushApi } from "../core/pushApi";
+import VoiceAppointment from "../components/VoiceAppointment";
 
 type ActionTile = {
   href: string;
@@ -607,6 +608,7 @@ export default function InicioPage() {
 
       </div>
 
+      <VoiceAppointment />
       <MobileNav />
     </main>
   );
