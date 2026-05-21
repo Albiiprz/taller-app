@@ -627,7 +627,7 @@ export async function updateInventoryProduct(input: {
 }
 
 export async function deleteInventoryProduct(id: string): Promise<{ deleted: true }> {
-  return apiFetch<{ deleted: true }>(`/inventory/products/${encodeURIComponent(id)}`, { method: "DELETE" });
+  return apiFetch<{ deleted: true }>(`/work-orders/inventory/products/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export async function adjustInventoryStock(input: {
