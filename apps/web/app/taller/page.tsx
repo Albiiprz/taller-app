@@ -292,8 +292,8 @@ function BoardSection({
   }, [items]);
 
   return (
-    <div className="-mx-1 overflow-x-auto px-1 pb-2 lg:overflow-visible">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <div className="pb-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {WORKSHOP_BOARD_COLUMNS.map((column) => {
           const rows = grouped[column.key];
           const accent = columnAccent[column.key] ?? "#334155";

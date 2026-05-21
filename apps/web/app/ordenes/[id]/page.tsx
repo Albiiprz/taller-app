@@ -1322,8 +1322,20 @@ export default function DetalleOT() {
 
       <style jsx global>{`
         @media print {
-          .mobile-nav-safe > * { display: none !important; }
-          .print-budget-a4 { display: block !important; margin: 0; color: #0f172a; font-family: Arial, sans-serif; }
+          .mobile-nav-safe * { visibility: hidden !important; }
+          .print-budget-a4, .print-budget-a4 * { visibility: visible !important; }
+          .print-budget-a4 {
+            display: block !important;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0 10mm;
+            color: #0f172a;
+            font-family: Arial, sans-serif;
+            background: #fff;
+          }
           .print-budget-head { margin-bottom: 16px; background: linear-gradient(135deg, #0b2a4a 0%, #173a60 100%); color: #fff; border-radius: 12px; padding: 14px 16px; }
           .print-budget-brand { display: flex; align-items: center; gap: 12px; }
           .print-budget-brand img { width: 64px; height: 64px; object-fit: contain; }
