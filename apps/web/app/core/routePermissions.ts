@@ -13,7 +13,8 @@ export type RouteKey =
   | "avisos"
   | "perfil"
   | "usuarios"
-  | "clientes";
+  | "clientes"
+  | "exportar";
 
 const ALL_ROLES: Role[] = [
   "Administración",
@@ -38,6 +39,7 @@ const ROUTE_PERMISSIONS: Record<RouteKey, Role[]> = {
   inventario: ["Administración", "Inventario"],
   usuarios: ["Administración"],
   clientes: ["Administración", "Oficina", "Jefe de Taller"],
+  exportar: ["Administración", "Oficina"],
 };
 
 export function canAccessRoute(userRoles: Role[], route: RouteKey): boolean {

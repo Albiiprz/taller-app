@@ -13,6 +13,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { ScheduleRotationModule } from './schedule-rotation/schedule-rotation.module';
 import { ClientsModule } from './clients/clients.module';
+import { ExportModule } from './export/export.module';
 
 const featureModules =
   process.env.NODE_ENV === 'test'
@@ -29,6 +30,7 @@ const featureModules =
         UsersModule,
         ScheduleRotationModule,
         ClientsModule,
+        ExportModule,
       ];
 
 @Module({

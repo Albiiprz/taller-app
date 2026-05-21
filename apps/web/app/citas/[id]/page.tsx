@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import MobileNav from "../../components/MobileNav";
 import { Icon } from "../../components/ui/Icon";
-import { getAppointment, getTechniciansAvailabilityByDate, updateAppointment } from "../../core/ordersApi";
+import { getAppointment, listUsers, updateAppointment } from "../../core/ordersApi";
+
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
 
 export default function EditarCitaPage() {
   const params = useParams<{ id: string }>();
@@ -45,8 +50,8 @@ export default function EditarCitaPage() {
       setModel(appt.vehicle.model ?? "");
       setWorkType(appt.workType ?? "");
       setNotes(appt.notes ?? "");
-      setStartAt(appt.startAt ? new Date(appt.startAt).toISOString().slice(0, 16) : "");
-      setEndAt(appt.endAt ? new Date(appt.endAt).toISOString().slice(0, 16) : "");
+      setStartAt(appt.startAt ? toLocalInput(appt.startAt) : "");
+      setEndAt(appt.endAt ? toLocalInput(appt.endAt) : "");
       setTechnicianId(appt.technicianId ?? "");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No pude abrir esta cita.");
@@ -60,22 +65,10 @@ export default function EditarCitaPage() {
   }, [id]);
 
   useEffect(() => {
-    async function loadTechs() {
-      try {
-        const date = (startAt || new Date().toISOString().slice(0, 16)).slice(0, 10);
-        const list = await getTechniciansAvailabilityByDate({
-          date,
-          durationMinutes: 60,
-        });
-        const options = list.map((x) => ({ id: x.technicianId, name: x.name }));
-        setTechnicianOptions(options);
-        if (!technicianId && options[0]) setTechnicianId(options[0].id);
-      } catch {
-        setTechnicianOptions([]);
-      }
-    }
-    void loadTechs();
-  }, [startAt, technicianId]);
+    listUsers({ role: "TECNICO" })
+      .then((users) => setTechnicianOptions(users.map((u) => ({ id: String(u.id), name: u.name }))))
+      .catch(() => setTechnicianOptions([]));
+  }, []);
 
   async function save() {
     setSaving(true);
