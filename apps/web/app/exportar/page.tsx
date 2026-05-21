@@ -17,7 +17,7 @@ export default function ExportarPage() {
   const canExport = hasRole("Administración") || hasRole("Oficina");
 
   function download(key: string, filename: string) {
-    const token = typeof window !== "undefined" ? localStorage.getItem("taller_token") : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("taller_access_token_v1") : null;
     const url = `${API_BASE}/export/${key}`;
     const a = document.createElement("a");
     a.href = url;
