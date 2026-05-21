@@ -118,6 +118,7 @@ const DESKTOP_MAIN_ITEMS: Array<{
   { href: "/ordenes",          label: "Trabajos",   key: "ordenes",    section: "ordenes"    },
   { href: "/calendario",       label: "Calendario", key: "calendario", section: "calendario" },
   { href: "/inventario",       label: "Inventario", key: "inventario", section: "inventario" },
+  { href: "/clientes",         label: "Clientes",   key: "clientes",   section: "inicio"     },
   { href: "/ajustes/usuarios", label: "Usuarios",   key: "usuarios",   section: "usuarios"   },
 ];
 

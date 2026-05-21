@@ -11,7 +11,9 @@ import {
   createAppointmentDraft,
   getTechnicianAvailabilityRange,
   getTechniciansAvailabilityByDate,
+  searchClients,
   type AvailabilityTechnicianDay,
+  type ClientSummary,
 } from "../../core/ordersApi";
 import { semaphoreBadgeClass, semaphorePlainLabel } from "../../core/semaphore";
 import { trackUxEvent } from "../../core/uxMetrics";
@@ -73,6 +75,9 @@ function NuevaCitaForm() {
   const [lastWhatsappUrl, setLastWhatsappUrl] = useState("");
   const [formStartedAt] = useState(Date.now());
   const [quickHistory, setQuickHistory] = useState<QuickHistoryItem[]>([]);
+  const [clientSuggestions, setClientSuggestions] = useState<ClientSummary[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [plateScanOpen, setPlateScanOpen] = useState(false);
   const [plateScanError, setPlateScanError] = useState("");
   const [plateScanMessage, setPlateScanMessage] = useState("");
@@ -110,6 +115,30 @@ function NuevaCitaForm() {
     if (!company.trim() && match.company) setCompany(match.company);
     if (!plate.trim() && match.plate) setPlate(match.plate);
   }, [name, quickHistory, phone, email, company, plate]);
+
+  function handleNameChange(val: string) {
+    setName(val);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (val.trim().length < 2) { setClientSuggestions([]); setShowSuggestions(false); return; }
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await searchClients(val);
+        setClientSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      } catch { /* silencioso */ }
+    }, 300);
+  }
+
+  function applyClientSuggestion(c: ClientSummary) {
+    setName(c.name);
+    if (c.phone) setPhone(c.phone);
+    if (c.email) setEmail(c.email);
+    if (c.company) setCompany(c.company);
+    if (c.plates[0]) setPlate(c.plates[0]);
+    if (c.models[0]) setModel(c.models[0]);
+    setShowSuggestions(false);
+    setClientSuggestions([]);
+  }
 
   async function loadAvailability() {
     setError("");
@@ -382,7 +411,34 @@ function NuevaCitaForm() {
                 <p className="mt-1 text-sm font-semibold text-slate-600">Con el nombre y el teléfono ya puedes seguir.</p>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <input className="rounded-2xl border-2 border-slate-200 p-4 text-base font-semibold" placeholder="Nombre y apellidos*" value={name} onChange={(e) => setName(e.target.value)} list="client-name-suggestions" />
+                  <div className="relative sm:col-span-2">
+                    <input
+                      className="w-full rounded-2xl border-2 border-slate-200 p-4 text-base font-semibold"
+                      placeholder="Nombre y apellidos*"
+                      value={name}
+                      onChange={(e) => handleNameChange(e.target.value)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                      autoComplete="off"
+                    />
+                    {showSuggestions && clientSuggestions.length > 0 && (
+                      <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-2xl border-2 border-slate-200 bg-white shadow-xl">
+                        {clientSuggestions.map((c) => (
+                          <li key={c.id}>
+                            <button
+                              type="button"
+                              className="w-full px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100"
+                              onMouseDown={() => applyClientSuggestion(c)}
+                            >
+                              <p className="text-sm font-extrabold text-slate-900">{c.name}{c.company ? ` — ${c.company}` : ""}</p>
+                              <p className="text-xs font-semibold text-slate-500">
+                                {[c.phone, c.plates.join(", ")].filter(Boolean).join(" · ")}
+                              </p>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                   <input className="rounded-2xl border-2 border-slate-200 p-4 text-base font-semibold" placeholder="Teléfono*" value={phone} onChange={(e) => setPhone(e.target.value)} list="client-phone-suggestions" />
                   <input className="rounded-2xl border-2 border-slate-200 p-4 text-base font-semibold" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                   <input className="rounded-2xl border-2 border-slate-200 p-4 text-base font-semibold" placeholder="Empresa" value={company} onChange={(e) => setCompany(e.target.value)} />

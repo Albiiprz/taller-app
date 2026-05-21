@@ -1101,3 +1101,42 @@ export async function consumeWorkOrderMaterial(input: {
     }),
   });
 }
+
+// ── Clients ──────────────────────────────────────────────────────────────────
+
+export type ClientSummary = {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  company: string | null;
+  created_at: string;
+  plates: string[];
+  models: string[];
+  last_appointment: string | null;
+};
+
+export type ClientDetail = ClientSummary & {
+  vehicles: Array<{ id: number; plate: string; model: string | null; vin: string | null; vehicle_type: string | null; created_at: string }>;
+  appointments: Array<{ id: number; work_type: string | null; start_at: string | null; status: string; plate: string | null }>;
+};
+
+export async function searchClients(q: string): Promise<ClientSummary[]> {
+  if (!q.trim()) return [];
+  const res = await apiFetch<{ data: ClientSummary[] }>(`/clients?q=${encodeURIComponent(q)}&limit=10`);
+  return res.data ?? [];
+}
+
+export async function getClient(id: number): Promise<ClientDetail | null> {
+  const res = await apiFetch<{ data: ClientDetail | null }>(`/clients/${id}`);
+  return res.data ?? null;
+}
+
+export async function updateClient(id: number, data: { name?: string; phone?: string; email?: string; company?: string }): Promise<ClientDetail | null> {
+  const res = await apiFetch<{ data: ClientDetail | null }>(`/clients/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.data ?? null;
+}

@@ -76,18 +76,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         name TEXT NOT NULL,
         phone TEXT,
         email TEXT,
+        company TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS company TEXT;
 
       CREATE TABLE IF NOT EXISTS vehicles (
         id BIGSERIAL PRIMARY KEY,
         client_id BIGINT REFERENCES clients(id) ON DELETE SET NULL,
         plate TEXT NOT NULL UNIQUE,
+        model TEXT,
         vin TEXT,
         vehicle_type TEXT,
         tachograph_model TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS model TEXT;
 
       CREATE TABLE IF NOT EXISTS work_orders (
         id BIGSERIAL PRIMARY KEY,
