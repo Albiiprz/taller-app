@@ -396,12 +396,24 @@ function NuevaCitaForm() {
         </section>
       ) : (
         <>
-          <section className="mx-auto mt-4 flex w-full max-w-5xl gap-2 overflow-x-auto pb-1">
-            <StepPill active={step === 1} done={stepDone[1]} label="1 Cliente" />
-            <StepPill active={step === 2} done={stepDone[2]} label="2 Vehículo" />
-            <StepPill active={step === 3} done={stepDone[3]} label="3 Técnico" />
-            <StepPill active={step === 4} done={stepDone[4]} label="4 Hueco" />
-            <StepPill active={step === 5} done={stepDone[5]} label="5 Confirmar" />
+          <section className="mx-auto mt-4 flex w-full max-w-5xl items-center gap-2">
+            <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+              <StepPill active={step === 1} done={stepDone[1]} label="1 Cliente" />
+              <StepPill active={step === 2} done={stepDone[2]} label="2 Vehículo" />
+              <StepPill active={step === 3} done={stepDone[3]} label="3 Técnico" />
+              <StepPill active={step === 4} done={stepDone[4]} label="4 Hueco" />
+              <StepPill active={step === 5} done={stepDone[5]} label="5 Confirmar" />
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/calendario")}
+              title="Cancelar y cerrar"
+              className="ml-2 flex-shrink-0 rounded-2xl border-2 border-slate-200 bg-white p-2 text-slate-500 hover:border-red-300 hover:text-red-500"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+              </svg>
+            </button>
           </section>
 
           <section className="surface-content mx-auto mt-4 w-full max-w-5xl p-4">
