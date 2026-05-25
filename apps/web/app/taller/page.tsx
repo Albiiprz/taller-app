@@ -178,37 +178,36 @@ function MoveCard({
 
   return (
     <article className="surface-content p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-extrabold text-slate-900">{item.clientName || item.title}</p>
-          <p className="mt-1 text-sm font-semibold text-slate-700">{item.plate}</p>
-          {(item.appointmentWorkType || item.title) ? (
-            <p className="mt-0.5 text-xs font-semibold text-slate-500 line-clamp-1">{item.appointmentWorkType || item.title}</p>
-          ) : null}
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            {item.scheduledStart ? (
-              <span className="text-xs font-extrabold text-slate-500">
-                {new Date(item.scheduledStart).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" })} · {formatTimeShort(item.scheduledStart)}
-              </span>
+      <Link href={`/ordenes/${item.id}`} className="block">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-extrabold text-slate-900">{item.clientName || item.title}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-700">{item.plate}</p>
+            {(item.appointmentWorkType || item.title) ? (
+              <p className="mt-0.5 text-xs font-semibold text-slate-500 line-clamp-1">{item.appointmentWorkType || item.title}</p>
             ) : null}
-            {isOverduePending(item) ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
-                <Icon name="bell" className="h-3 w-3" />
-                Hora pasada
-              </span>
-            ) : null}
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {item.scheduledStart ? (
+                <span className="text-xs font-extrabold text-slate-500">
+                  {new Date(item.scheduledStart).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" })} · {formatTimeShort(item.scheduledStart)}
+                </span>
+              ) : null}
+              {isOverduePending(item) ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
+                  <Icon name="bell" className="h-3 w-3" />
+                  Hora pasada
+                </span>
+              ) : null}
+            </div>
           </div>
+          <Badge className={prioBadgeClass(item.prio)}>{item.prio}</Badge>
         </div>
-        <Badge className={prioBadgeClass(item.prio)}>{item.prio}</Badge>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Badge className={statusBadgeClass(item.stage)}>{statusLabel(item.stage)}</Badge>
-        <span className="text-xs font-semibold text-slate-500">Trabajo #{item.id}</span>
-      </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Badge className={statusBadgeClass(item.stage)}>{statusLabel(item.stage)}</Badge>
+          <span className="text-xs font-semibold text-slate-500">Trabajo #{item.id}</span>
+        </div>
+      </Link>
       <div className="mt-4 space-y-2">
-        <Link href={`/ordenes/${item.id}`} className="cta-primary w-full rounded-2xl px-4 text-sm">
-          Abrir trabajo
-        </Link>
         {canMove ? (
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <select
