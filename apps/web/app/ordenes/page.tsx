@@ -256,7 +256,7 @@ export default function OrdenesPage() {
     setError("");
     try {
       const rows = await listWorkOrders();
-      setItems(rows);
+      setItems(rows.filter((r) => r.stage !== "CERRADO"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo preparar esta lista.");
     } finally {
