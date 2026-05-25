@@ -146,11 +146,21 @@ function toLocalYmd(iso?: string | null): string | null {
   return local.toISOString().slice(0, 10);
 }
 
+const FINISHED_STAGES: OtStatus[] = ["CERRADO", "FACTURADO", "ENTREGADO"];
+const ACTIVE_STAGES: OtStatus[] = ["RECEPCION", "REPARACION", "QC", "LISTO_ENTREGA", "DIAGNOSTICO", "APROBADO", "PRESUPUESTO_ENVIADO"];
+
 export function isOrderForDay(order: OtItem, ymd: string): boolean {
+  // Always show active in-progress orders regardless of date
+  if (ACTIVE_STAGES.includes(order.stage)) return true;
+
   const scheduledDay = toLocalYmd(order.scheduledStart ?? null);
-  if (scheduledDay) return scheduledDay === ymd;
+  // Show orders scheduled for today or overdue (past date, not finished)
+  if (scheduledDay) {
+    if (scheduledDay <= ymd) return true;
+    return false;
+  }
   const createdDay = toLocalYmd(order.createdAt ?? null);
-  if (createdDay) return createdDay === ymd;
+  if (createdDay) return createdDay <= ymd && !FINISHED_STAGES.includes(order.stage);
   return false;
 }
 
