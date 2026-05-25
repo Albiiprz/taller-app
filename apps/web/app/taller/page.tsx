@@ -182,8 +182,12 @@ function MoveCard({
         <div>
           <p className="text-sm font-extrabold text-slate-900">{item.clientName || item.title}</p>
           <p className="mt-1 text-sm font-semibold text-slate-700">{item.plate}</p>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-xs font-extrabold text-slate-500">{formatTimeShort(item.scheduledStart)}</span>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {item.scheduledStart ? (
+              <span className="text-xs font-extrabold text-slate-500">
+                {new Date(item.scheduledStart).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" })} · {formatTimeShort(item.scheduledStart)}
+              </span>
+            ) : null}
             {isOverduePending(item) ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
                 <Icon name="bell" className="h-3 w-3" />
