@@ -204,7 +204,6 @@ function MoveCard({
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge className={statusBadgeClass(item.stage)}>{statusLabel(item.stage)}</Badge>
-          <span className="text-xs font-semibold text-slate-500">Trabajo #{item.id}</span>
         </div>
       </Link>
       <div className="mt-4 space-y-2">
