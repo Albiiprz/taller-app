@@ -225,15 +225,23 @@ function getBlockSurfaceStyle(
   };
 }
 
+const IGNORED_NOTES = ["importado de google", "google import", "imported from google"];
+
 function getBlockTitle(block: CalendarSummaryItem["blocks"][number]) {
+  // Always prefer real appointment data
   if (block.appointment?.vehiclePlate && block.appointment?.clientName) {
     return `${block.appointment.vehiclePlate} · ${block.appointment.clientName}`;
   }
-  if (block.appointment?.workOrderTitle) return block.appointment.workOrderTitle;
-  if (block.appointment?.workType) return block.appointment.workType;
+  if (block.appointment?.clientName && block.appointment?.workType) {
+    return `${block.appointment.clientName} · ${block.appointment.workType}`;
+  }
   if (block.appointment?.clientName) return block.appointment.clientName;
-  if (block.note) return block.note;
+  if (block.appointment?.workType) return block.appointment.workType;
+  if (block.appointment?.workOrderTitle) return block.appointment.workOrderTitle;
   if (block.type === "APPOINTMENT" && block.sourceId) return `Cita #${block.sourceId}`;
+  // For non-appointment blocks, show note only if not a Google import placeholder
+  const note = block.note?.trim() ?? "";
+  if (note && !IGNORED_NOTES.includes(note.toLowerCase())) return note;
   return getBlockTypeLabel(block.type);
 }
 
@@ -1377,7 +1385,7 @@ export default function CalendarioPage() {
                                         </div>
                                         <p className="mt-1 text-[11px] font-extrabold sm:text-xs">{block.timeLabel}</p>
                                         {showNote ? (
-                                          <p className="mt-1 line-clamp-1 text-[10px] font-semibold sm:text-[11px]">{block.note || "Sin detalle añadido"}</p>
+                                          <p className="mt-1 line-clamp-1 text-[10px] font-semibold sm:text-[11px]">{getBlockTitle(block)}</p>
                                         ) : null}
                                       </div>
                                       {renderHoverCard(hoverEvent)}
@@ -1426,11 +1434,8 @@ export default function CalendarioPage() {
                                       {events.length === 0 ? (
                                         <div className="min-h-[22px]" />
                                       ) : (
-                                        events.slice(0, 2).map((event) => renderSummaryChip(event, true))
+                                        events.map((event) => renderSummaryChip(event, true))
                                       )}
-                                      {events.length > 2 ? (
-                                        <p className="text-[10px] font-extrabold text-slate-500">+{events.length - 2} más</p>
-                                      ) : null}
                                     </div>
                                   </div>
                                 );
