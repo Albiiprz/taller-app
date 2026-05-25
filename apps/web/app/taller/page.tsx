@@ -182,6 +182,9 @@ function MoveCard({
         <div>
           <p className="text-sm font-extrabold text-slate-900">{item.clientName || item.title}</p>
           <p className="mt-1 text-sm font-semibold text-slate-700">{item.plate}</p>
+          {(item.appointmentWorkType || item.title) ? (
+            <p className="mt-0.5 text-xs font-semibold text-slate-500 line-clamp-1">{item.appointmentWorkType || item.title}</p>
+          ) : null}
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {item.scheduledStart ? (
               <span className="text-xs font-extrabold text-slate-500">
