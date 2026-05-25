@@ -360,15 +360,15 @@ function BoardSection({
                       draggable
                       onDragStart={(e) => handleDragStart(e, item.id)}
                       onDragEnd={() => { setDraggedId(null); setDragOverCol(null); }}
-                      className={`hidden lg:flex items-center justify-center gap-1.5 rounded-t-2xl border border-b-0 border-slate-200 bg-slate-50 px-3 py-1.5 cursor-grab active:cursor-grabbing select-none ${draggedId === item.id ? "opacity-40" : "hover:bg-slate-100"}`}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", borderRadius: "1rem 1rem 0 0", border: "1px solid #e2e8f0", borderBottom: "none", background: draggedId === item.id ? "#f1f5f9" : "#f8fafc", padding: "6px 12px", cursor: "grab", userSelect: "none" }}
                       title="Arrastra para mover de columna"
                     >
-                      <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 16 16" fill="currentColor">
+                      <svg style={{ width: 14, height: 14, color: "#94a3b8" }} viewBox="0 0 16 16" fill="#94a3b8">
                         <circle cx="5" cy="4" r="1.2"/><circle cx="11" cy="4" r="1.2"/>
                         <circle cx="5" cy="8" r="1.2"/><circle cx="11" cy="8" r="1.2"/>
                         <circle cx="5" cy="12" r="1.2"/><circle cx="11" cy="12" r="1.2"/>
                       </svg>
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Mover</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8" }}>Arrastrar</span>
                     </div>
                     <div className={`${draggedId === item.id ? "opacity-40" : ""}`}>
                       <MoveCard
