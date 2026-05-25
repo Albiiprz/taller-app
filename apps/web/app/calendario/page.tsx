@@ -835,7 +835,10 @@ export default function CalendarioPage() {
             {event.techName}
           </span>
         </div>
-        <p className={`mt-1 line-clamp-2 ${compact ? "text-[11px]" : "text-sm"} font-black`}>{event.title}</p>
+        <p className={`mt-1 line-clamp-1 ${compact ? "text-[11px]" : "text-sm"} font-black`}>{event.title}</p>
+        {event.appointment?.workType ? (
+          <p className={`mt-0.5 line-clamp-1 ${compact ? "text-[10px]" : "text-xs"} font-semibold opacity-70`}>{event.appointment.workType}</p>
+        ) : null}
         {renderHoverCard(event)}
       </button>
     );
