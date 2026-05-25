@@ -1388,7 +1388,10 @@ export default function CalendarioPage() {
                                         </div>
                                         <p className="mt-1 text-[11px] font-extrabold sm:text-xs">{block.timeLabel}</p>
                                         {showNote ? (
-                                          <p className="mt-1 line-clamp-1 text-[10px] font-semibold sm:text-[11px]">{getBlockTitle(block)}</p>
+                                          <p className="mt-1 line-clamp-1 text-[10px] font-extrabold sm:text-[11px]">{getBlockTitle(block)}</p>
+                                        ) : null}
+                                        {showNote && block.appointment?.workType ? (
+                                          <p className="mt-0.5 line-clamp-1 text-[10px] font-semibold opacity-70">{block.appointment.workType}</p>
                                         ) : null}
                                       </div>
                                       {renderHoverCard(hoverEvent)}
