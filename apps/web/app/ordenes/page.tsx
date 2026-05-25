@@ -49,7 +49,7 @@ function tabLabel(section: RoleSection, role: Role) {
 
 function filterBySection(section: RoleSection, rows: OtItem[], today: string): OtItem[] {
   if (section === "all") return rows;
-  if (section === "today") return rows.filter((it) => isOrderForDay(it, today));
+  if (section === "today") return rows.filter((it) => isOrderForDay(it, today) && it.stage !== "ENTREGADO" && it.stage !== "FACTURADO");
   if (section === "current") return rows.filter((it) => it.stage === "REPARACION" || it.stage === "QC");
   if (section === "arrivals") return rows.filter((it) => it.stage === "PROGRAMADA" || it.stage === "RECEPCION");
   if (section === "pending") return rows.filter((it) => ["PROGRAMADA", "RECEPCION", "PRESUPUESTO_ENVIADO", "APROBADO", "DIAGNOSTICO"].includes(it.stage));
