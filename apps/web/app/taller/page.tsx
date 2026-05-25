@@ -353,34 +353,32 @@ function BoardSection({
                   <div
                     key={`${item.id}-${item.stage}`}
                     id={`ot-${item.id}`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, item.id)}
-                    onDragEnd={() => { setDraggedId(null); setDragOverCol(null); }}
-                    className={`hidden lg:block cursor-grab active:cursor-grabbing ${draggedId === item.id ? "opacity-50" : ""} ${flashId === item.id ? "rounded-3xl ring-4 ring-blue-100" : ""}`}
+                    className={flashId === item.id ? "rounded-3xl ring-4 ring-blue-100" : ""}
                   >
-                    <MoveCard
-                      item={item}
-                      currentRole={currentRole}
-                      activeUserName={activeUserName}
-                      onMoved={onMoved}
-                      busy={busy}
-                    />
-                  </div>
-                ))}
-                {/* Mobile: same cards without drag */}
-                {rows.map((item) => (
-                  <div
-                    key={`mob-${item.id}-${item.stage}`}
-                    id={flashId === item.id ? `ot-${item.id}` : undefined}
-                    className={`lg:hidden ${flashId === item.id ? "rounded-3xl ring-4 ring-blue-100" : ""}`}
-                  >
-                    <MoveCard
-                      item={item}
-                      currentRole={currentRole}
-                      activeUserName={activeUserName}
-                      onMoved={onMoved}
-                      busy={busy}
-                    />
+                    {/* Drag handle — desktop only */}
+                    <div
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item.id)}
+                      onDragEnd={() => { setDraggedId(null); setDragOverCol(null); }}
+                      className={`hidden lg:flex items-center justify-center gap-1.5 rounded-t-2xl border border-b-0 border-slate-200 bg-slate-50 px-3 py-1.5 cursor-grab active:cursor-grabbing select-none ${draggedId === item.id ? "opacity-40" : "hover:bg-slate-100"}`}
+                      title="Arrastra para mover de columna"
+                    >
+                      <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 16 16" fill="currentColor">
+                        <circle cx="5" cy="4" r="1.2"/><circle cx="11" cy="4" r="1.2"/>
+                        <circle cx="5" cy="8" r="1.2"/><circle cx="11" cy="8" r="1.2"/>
+                        <circle cx="5" cy="12" r="1.2"/><circle cx="11" cy="12" r="1.2"/>
+                      </svg>
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Mover</span>
+                    </div>
+                    <div className={`${draggedId === item.id ? "opacity-40" : ""}`}>
+                      <MoveCard
+                        item={item}
+                        currentRole={currentRole}
+                        activeUserName={activeUserName}
+                        onMoved={onMoved}
+                        busy={busy}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
