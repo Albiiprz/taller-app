@@ -267,6 +267,9 @@ function BoardSection({
     LISTO_ENTREGA: "#16a34a",
   };
 
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<OtStatus | null>(null);
+
   const grouped = useMemo(() => {
     const base: Record<OtStatus, OtItem[]> = {
       PROGRAMADA: [],
@@ -291,19 +294,46 @@ function BoardSection({
     return base;
   }, [items]);
 
+  function handleDragStart(e: React.DragEvent, itemId: string) {
+    setDraggedId(itemId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", itemId);
+  }
+
+  function handleDragOver(e: React.DragEvent, colKey: OtStatus) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverCol(colKey);
+  }
+
+  function handleDrop(e: React.DragEvent, colKey: OtStatus) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain") || draggedId;
+    setDraggedId(null);
+    setDragOverCol(null);
+    if (!id) return;
+    const item = items.find((i) => i.id === id);
+    if (!item || item.stage === colKey) return;
+    void onMoved(id, colKey);
+  }
+
   return (
     <div className="pb-2">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {WORKSHOP_BOARD_COLUMNS.map((column) => {
           const rows = grouped[column.key];
           const accent = columnAccent[column.key] ?? "#334155";
+          const isOver = dragOverCol === column.key;
           return (
             <section
               key={column.key}
-              className="surface-content overflow-hidden border-0 shadow-none"
+              className={`surface-content overflow-hidden border-0 shadow-none transition-colors ${isOver ? "ring-2 ring-blue-400 ring-offset-1" : ""}`}
               style={{ borderRadius: "1.25rem" }}
+              onDragOver={(e) => handleDragOver(e, column.key)}
+              onDragLeave={() => setDragOverCol(null)}
+              onDrop={(e) => handleDrop(e, column.key)}
             >
-              <div style={{ height: 4, background: accent }} />
+              <div style={{ height: 4, background: isOver ? "#3b82f6" : accent, transition: "background 0.15s" }} />
               <header className="flex items-start justify-between gap-3 border-b border-slate-100 bg-white/80 px-4 py-3 backdrop-blur">
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900">{column.title}</h3>
@@ -313,13 +343,36 @@ function BoardSection({
                   {rows.length}
                 </span>
               </header>
-              <div className="space-y-3 p-3">
-                {rows.length === 0 ? <EmptyBox text="Nada aquí ahora mismo." /> : null}
+              <div className={`space-y-3 p-3 ${isOver ? "bg-blue-50/60" : ""}`}>
+                {rows.length === 0 ? (
+                  <div className={`rounded-2xl border-2 border-dashed p-4 text-center text-xs font-semibold ${isOver ? "border-blue-300 text-blue-400" : "border-slate-200 text-slate-400"}`}>
+                    {isOver ? "Soltar aquí" : "Nada aquí ahora mismo."}
+                  </div>
+                ) : null}
                 {rows.map((item) => (
                   <div
                     key={`${item.id}-${item.stage}`}
                     id={`ot-${item.id}`}
-                    className={flashId === item.id ? "rounded-3xl ring-4 ring-blue-100" : undefined}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, item.id)}
+                    onDragEnd={() => { setDraggedId(null); setDragOverCol(null); }}
+                    className={`hidden lg:block cursor-grab active:cursor-grabbing ${draggedId === item.id ? "opacity-50" : ""} ${flashId === item.id ? "rounded-3xl ring-4 ring-blue-100" : ""}`}
+                  >
+                    <MoveCard
+                      item={item}
+                      currentRole={currentRole}
+                      activeUserName={activeUserName}
+                      onMoved={onMoved}
+                      busy={busy}
+                    />
+                  </div>
+                ))}
+                {/* Mobile: same cards without drag */}
+                {rows.map((item) => (
+                  <div
+                    key={`mob-${item.id}-${item.stage}`}
+                    id={flashId === item.id ? `ot-${item.id}` : undefined}
+                    className={`lg:hidden ${flashId === item.id ? "rounded-3xl ring-4 ring-blue-100" : ""}`}
                   >
                     <MoveCard
                       item={item}
