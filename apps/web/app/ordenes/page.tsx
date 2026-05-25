@@ -146,11 +146,27 @@ function formatTime(iso?: string | null): string | null {
   return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 }
 
+function formatDate(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+}
+
+function isToday(iso?: string | null): boolean {
+  if (!iso) return true;
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
 function WorkCard({ item }: { item: OtItem }) {
   const isUrgent = item.prio === "Urgente";
   const isReady = item.stage === "LISTO_ENTREGA" || item.stage === "ENTREGADO" || item.stage === "FACTURADO";
   const isActive = item.stage === "REPARACION" || item.stage === "QC";
   const time = formatTime(item.scheduledStart);
+  const date = formatDate(item.scheduledStart);
+  const showDate = date && !isToday(item.scheduledStart);
   const pastTime = isPastScheduled(item);
 
   const bg = isUrgent
@@ -186,6 +202,9 @@ function WorkCard({ item }: { item: OtItem }) {
             {statusLabel(item.stage)}
           </span>
           <span className="text-xs font-semibold text-slate-400">#{item.id}</span>
+          {showDate && (
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-extrabold text-slate-600">{date}</span>
+          )}
           {time && (
             <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
